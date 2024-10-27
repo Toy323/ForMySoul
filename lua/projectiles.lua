@@ -2,7 +2,7 @@ BASE_PROJ = {}
 projectiles = {}
 PROJECTILE = {}
 PROJECTILE.Size = {x = 48,y = 48}
-require("table_enc")
+require("lua/table_enc")
 BASE_PROJ.projectilesList = {
     ["Normal"] = {
         Damage = 5,

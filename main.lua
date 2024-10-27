@@ -13,11 +13,11 @@ end
 function Color(r,g,b,a)
     return {['r'] = r,['g'] = g,['b'] = b,['a'] = a}
 end
-require('table_enc')
-require('middleclass')
-require('tilemap')
-require('enemy')
-require('projectiles')
+require('lua/table_enc')
+require('lua/middleclass')
+require('lua/tilemap')
+require('lua/enemy')
+require('lua/projectiles')
 
 
 

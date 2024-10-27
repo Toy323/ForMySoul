@@ -2,7 +2,7 @@ BASE_ENEMY = {}
 ENEMIES = {}
 ENEMY = {}
 ENEMY.Size = {x = 48,y = 48}
-require("table_enc")
+require("lua/table_enc")
 BASE_ENEMY.enemiesList = {
     ["Soldier"] = {
         HP = 500,

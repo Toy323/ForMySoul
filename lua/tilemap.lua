@@ -4,7 +4,7 @@ tiles = {}
 tile.IsTile = true
 tilesblock = {}
 
-require("table_enc")
+require("lua/table_enc")
 function tile:BaseTile()
     base = Copy(tile)
     base.ID = #tilesblock + 1
