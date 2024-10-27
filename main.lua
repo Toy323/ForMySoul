@@ -1,6 +1,7 @@
 BASE_MODULE = {}
 BASE_MODULE.Time = 0
-BASE_MODULE.Version = "0.0.1.6"
+BASE_MODULE.Version = "0.0.7.3"
+BASE_MODULE.WaveNow = 0
 SUBMODULE_INPUT = {}
 SUBMODULE_DRAW = {}
 PHANTOMS = {}
@@ -18,6 +19,7 @@ require('lua/middleclass')
 require('lua/tilemap')
 require('lua/enemy')
 require('lua/projectiles')
+require('lua/waves')
 
 
 
@@ -42,7 +44,9 @@ function beginContact(a, b, coll)
         if proj and proj.OnContact and enemy then
             proj:OnContact(enemy)
         end
-        if enemy and enemy.OnContact and not proj.IsTile then
+        if enemy and enemy.OnContact and proj and not proj.IsTile then
+            enemy:OnContact(proj)
+        elseif  enemy and enemy.OnContact and proj and proj.IsTile then
             enemy:OnContact(proj)
         end
    -- end
@@ -104,7 +108,8 @@ local innerF = {
             proj:SetSpeed(240)
             proj.Damage = 15
             proj.Think = function()
-                proj.YSpeed = 60 * math.sin(CurTime() + proj.ID*4)
+                proj.YSpeed = 160 * math.sin(CurTime() + proj.ID*4)
+                proj.Damage = proj.Damage + 0.02
                 proj:Walk()
             end
         end
@@ -141,6 +146,7 @@ local innerF = {
             proj:SetPos(x,y)
         end
     end,
+
     function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 0.2
@@ -159,6 +165,33 @@ local innerF = {
             proj.DieTime = CurTime() + 12
         end
     end,
+    function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 4.5
+            local x,y = self.Position["x"],self.Position['y']
+            local proj = BASE_PROJ:BasePROJ("Gas",x,y)
+            proj:SetPos(x,y)
+        end
+    end,
+    function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 0.34
+            for i=1,5 do
+                local x,y = self.Position["x"],self.Position['y']
+                local proj = BASE_PROJ:BasePROJ(nil,x,y)
+                proj.YSpeed = i == 1 and -30 or i == 2 and 30 or i == 3 and 70 or i == 4 and -70 or 0
+                proj.Damage = 50
+                proj:SetPos(x,y)
+            end
+            
+        end
+    end,
+    function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 10
+            BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 65
+        end
+    end,
 }
 local colBullet = Color(133,16,88)
 local images = {
@@ -169,6 +202,63 @@ local images = {
     {love.graphics.newImage('images/charger.png'), colBullet},
     {love.graphics.newImage('images/powerer.png'), colBullet},
     {love.graphics.newImage('images/lballer.png'), Color(0,56,141)},
+    {love.graphics.newImage('images/alwaysgatling.png'), colBullet},
+    {love.graphics.newImage('images/flamekicker.png'), Color(158,58,0)},
+    {love.graphics.newImage('images/vyazk.png'), Color(0,158,3)},
+    {love.graphics.newImage('images/supra.png'), colBullet},
+    {love.graphics.newImage('images/miner.png'), Color(46,46,46)},
+}
+local costOfWep = {
+    tripla = 50,
+    frize = 125,
+    shield = 600,
+    sinusoid = 125,
+    charger = 250,
+    powerer = 150,
+    lballer = 250,
+    alwaysgatling = 250,
+    flamekicker = 300,
+    news = 250,
+    supergun = 2250,
+    money = 125,
+}
+local ready = love.graphics.newImage('images/ready.png')
+local baseMoney = 250
+BASE_MODULE["MoneyNow"] = baseMoney
+BASE_MODULE.HealthNow = 7500
+function GetM()
+    return BASE_MODULE.MoneyNow
+end
+local weapons = {
+    "tripla",
+    "frize",
+    "shield",
+    "sinusoid",
+    "charger",
+    "powerer",
+    "lballer",
+    "alwaysgatling",
+    "flamekicker",
+    "news",
+    "supergun",
+    "money",
+
+
+}
+local desc = {
+    "Тристрел\nСтреляет тремя пулями по 15 урона каждая.\nМожет задевать другии линии.",
+    "Морозный СМГ\nСтреляет тремя пулями подряд наносящими 10(x2 урон по огнeнным врагам).\nКаждое попадание уменьшает скорость врага на 15%, дeйстуeт 5 раз.\nСтреляет прямо.",
+    "Генератор Щита\nЗадевает половину верхней линии и наносит 500 урона(урон уменьшается когда наносит урон по врагам с маленьким здоровьем).\nСтреляет прямо.",
+    "Воротила\nСтреляет пулями с волнообразной траекторирей, при этом урон в полете увеличивается.\nМожет задевать другие линии.",
+    "Зарядник\nЗаряжает атаку, чтобы выстрельнуть 12 пулями подряд, у которых 4 урона.\nСтреляет прямо.",
+    "Усиливающийся пистолет\nНемного увеличивает урон своих пуль когда стоит на поле.\nСтреляет прямо.",
+    "Электрошаровик\nСтреляет шаровой молнией, которая можeт попасть по врагу 3 раза и послe уничтожится.\nСтреляет прямо.\nУрон уменьшается на 15 когда попадает по врагу.",
+    "Короткий миниган\nВсегда стреляет пулями по 15 урона, но на очeнь короткой дистанции.\nСтреляет прямо.",
+    "Огнепых\nСтреляет огненным шаром, который поджигаeт врага.\nСтатус Поджига наносит 0.0075% от макс.здоровья урон. Каждое попадание дает дополнительные 0.0075% урона от макс.здоровья.\nСтреляет прямо.",
+    "Вязкий газ\nСтреляет вязкой пулей с уроном 25, которая останавливаeт врага на 0.5 секунды и при этом можeт сильно оттолкнуть eго.\nСтреляет прямо.",
+    "Супер-пушка\nСтреляет 5 пулями за раз с 50 уроном и с маленькой задержкой.\nМожет попадать по всему полю.",
+    "Добытчик минералов\nКаждые 10 секунд дает 65 минералов.\nМинералы нужны всегда.",
+
 }
 function love.load()
     print(love.window.getFullscreen())
@@ -177,22 +267,35 @@ function love.load()
 
     local cache = {}
     
+    local button = BUTTON.AddButton(1,1500,66,Color(5,130,28),1,1, ready)
+    button.OnClickDo = function() WAVE:Start() 
+        tiles:CreateMapFull(0,320,5,125, FORMULA_PARALEP_R, 12, Color(156,215,96))
+    end
+
     local oldy,oldx = 66, 1222
     local button = BUTTON.AddButton(1,oldx,oldy,Color(220,128,79),1,1, bim)
     local oldid = button.ID
+    
     button.OnClickDo = function(x,y)
-        if SELECTED_TOOL ~= button then
-            SELECTED_TOOL = button
+        BASE_MODULE["MoneyNow"] = baseMoney
+        BASE_MODULE.HealthNow = 7500
+        BASE_MODULE.ActiveMode = false
+        BASE_MODULE["WaveNow"] = 0
+        if #cache == 0 then
+            for k,v in pairs(tilesblock) do
+                if v then
+                    v:Remove()
+                end
+            end
+            love.load()
+            BUTTON.RemoveButton(oldid)
         else
-            if #cache == 0 then
-                love.load()
-                BUTTON.RemoveButton(oldid)
-            else
-                for k,v in pairs(cache) do
+             for k,v in pairs(cache) do
+                if v then
                     BUTTON.RemoveButton(v)
                 end
-                cache = {}
             end
+            cache = {}
         end
     end
     
@@ -206,51 +309,89 @@ function love.load()
         end
     end
     --table.insert(cache,button.ID)
-
-    for i=1,9 do
+    local was = {}
+    local frremove = {}
+    for i=1,#weapons do
         local img = images[i] and images[i][1] or nil
-        local button = BUTTON.AddButton(48,64 + 64 * i,66, img and images[i][2] or Color(51,167,169), img and 1, img and 1, img)
-        BASE_MODULE["ButtonOn"..i] = button
+        local button = BUTTON.AddButton(48,64*2 + 64 * ((i%9)-1),120 + 56 * math.ceil(i/9), img and images[i][2] or Color(51,167,169), img and 1, img and 1, img, {costOfWep[weapons[i]], 0, -15})
+        frremove[#frremove + 1] = button.ID
         button.OnClickDo = function(x,y)
-            if SELECTED_TOOL ~= button then
-                SELECTED_TOOL = button
-            else
-                SELECTED_TOOL = 0 
-                local finded = false
-                for k,v in pairs(tilesblock) do
-                    if x < v.Position.x + (v.Size or 2)*1.5  and x > v.Position.x and y < v.Position.y + (v.Size or 2)*1.5 and y > v.Position.y then
-                        v:SetColor(Color(5 + 10*i,74,20 + i*30))
-                        finded = true
-                        v.NextShoot = CurTime() + 1.1
-                        v:AddCollision()
-                        v.Think = innerF[i] or function()
-                            if v.NextShoot < CurTime() then
-                                v.NextShoot = CurTime() + 1.6
-                                BASE_PROJ:BasePROJ(nil, x,y):SetPos(x,y)
-                            end
+            if SELECTED_TOOL ~= button and not button.NOPICK then
+                --SELECTED_TOOL = button
+                table.insert(was, button.ID)
+                local g = #was
+                local img = images[i] and images[i][1] or nil
+                button.NOPICK = true
+                button.Position = {x = 222222,y =222222}
+                local gal = BUTTON.AddButton(48, 64*2 + 64 * g, 66, img and images[i][2] or Color(51,167,169), img and 1, img and 1, img, {costOfWep[weapons[i]], 0, -15})
+                BASE_MODULE["ButtonOn"..g] = gal
+                table.insert(cache, gal.ID)
+                if #was > 8 then
+                    for k,v in pairs(frremove) do
+                        if v then
+                            BUTTON.RemoveButton(v)
                         end
-                        v.OnRemove = function(self,x,y)
-                            tile:Create(x,y,125/2,Color(156,215,96))
-                        end
-                        break 
                     end
                 end
-                if not finded then
-                    if i == 2 or i == 3 then
-                        BASE_PROJ:BasePROJ(i == 3 and "LBall", x,y):SetPos(x,y)
+                gal.OnClickDo = function(x,y)
+                    if SELECTED_TOOL ~= gal then
+                        SELECTED_TOOL = gal
                     else
-                        BASE_ENEMY:BaseEnemy(i == 1 and "Tank" or i == 4 and "Runner" or i == 5 and "Fireman", x,y):SetPos(x,y)
+                        SELECTED_TOOL = 0 
+                        local finded = false
+                        for k,v in pairs(tilesblock) do
+                            if x < v.Position.x + (v.Size or 2)*1.5  and x > v.Position.x and y < v.Position.y + (v.Size or 2)*1.5 and y > v.Position.y then
+                                if BASE_MODULE["MoneyNow"] < costOfWep[weapons[i]] then
+                                    break
+                                end
+                                v:SetColor(Color(5 + 10*i,74,20 + i*30))
+                                BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - costOfWep[weapons[i]]
+                                finded = true
+                                v.NextShoot = CurTime() + 1.1
+                                v:AddCollision()
+                                v.Think = innerF[i] or function()
+                                    if v.NextShoot < CurTime() then
+                                        v.NextShoot = CurTime() + 1.6
+                                        BASE_PROJ:BasePROJ(nil, x,y):SetPos(x,y)
+                                    end
+                                end
+                                v.OnRemove = function(self,x,y)
+                                    tile:Create(x,y,125/2,Color(156,215,96))
+                                end
+                                break 
+                            end
+                        end
+                    end
+                end
+                gal.Think = function()
+                    if SELECTED_TOOL == gal then
+                        gal.Position.x = love.mouse.getX() - 32
+                        gal.Position.y =  love.mouse.getY() - 32
+                    else
+                        gal.Position.x = 64*2 + 64 * g
+                        gal.Position.y = 66
+                    end
+                end
+                gal.OnSeen = function(x,y)
+                    if desc[i] and SELECTED_TOOL ~= gal then
+                        love.graphics.print(desc[i],x,y+32)
                     end
                 end
             end
         end
         button.Think = function()
+            if button.NOPICK then return end
             if SELECTED_TOOL == button then
                 button.Position.x = love.mouse.getX() - 32
                 button.Position.y =  love.mouse.getY() - 32
             else
-                button.Position.x = 64 + 64 * i
-                button.Position.y =  66
+                button.Position.x = 120 + 64 * ((i-1)%9)
+                button.Position.y = 120 + 86 * math.ceil(i/9)
+            end
+        end
+        button.OnSeen = function(x,y)
+            if desc[i] then
+                love.graphics.print(desc[i],x,y+32)
             end
         end
         table.insert(cache,button.ID)
@@ -281,7 +422,6 @@ function love.load()
     --tiles
     --tiles:CreateMapLineDown(1,1,30,2)
 
-    tiles:CreateMapFull(0,320,5,125, FORMULA_PARALEP_R, 12, Color(156,215,96))
 end
 function love.update(time)
     BASE_MODULE["Time"] = (BASE_MODULE["Time"] or 0) + time
@@ -325,8 +465,16 @@ function love.mousepressed( x, y, button, istouch, presses )
     end
 end
 function love.draw()
-    love.graphics.setBackgroundColor(0.02,0.3,0)
-    love.graphics.print("huh",32,32)
+    love.graphics.setBackgroundColor(0.02,0.25,0)
+
+
+    love.graphics.print("Wave "..WAVE:GetWave(),128,128)
+
+    love.graphics.print("Minerals Now "..GetM(),32,32)
+
+    love.graphics.print("HP: "..BASE_MODULE.HealthNow,32,64)
+
+
     SUBMODULE_DRAW.Think()
 
     --[[love.graphics.circle("line", ball.b:getX(),ball.b:getY(), ball.s:getRadius(), 20)
@@ -345,11 +493,30 @@ function SUBMODULE_DRAW.Think()
     if love.mouse.isDown(1) then
         SUBMODULE_INPUT.CreatePhantomText(lastinput or 1,x,y)
     end
+    if BASE_MODULE.ActiveMode then
+        WAVE:Start()
+    end
     tiles:Think()
     SUBMODULE_INPUT.ThinkPhantoms()
     BUTTON.ThinkButtons()
     BASE_ENEMY:Think()
     BASE_PROJ:Think()
+
+    local x2,y2 = 0,0
+    for k,button in pairs(BUTTONS_SUB) do
+        local size = button.Size
+        local img = button.img 
+        x2,y2 = size['x'], size['y']
+        if img then
+            x2 = x2 + img:getWidth()
+            y2 = y2 + img:getHeight()
+        end
+       if x < button.Position.x + x2 and x > button.Position.x and y < button.Position.y + y2 and y > button.Position.y then
+            if button.OnSeen then
+                button.OnSeen(love.mouse.getX(),love.mouse.getY())
+            end
+       end
+    end
 end
 
 function SUBMODULE_INPUT.CreatePhantomText(text,x,y)
@@ -380,15 +547,22 @@ function FONTS_MODULES.CreateFont(name, size, hinting, dpiscale)
 end
 FONTS_MODULES.CreateFont("opensansc",32)
 FONTS_MODULES.CreateFont("opensansc",12)
+FONTS_MODULES.CreateFont("opensansc",15)
 fonts = FONTS_MODULES
 --BUTTON
 BUTTONS_SUB = {}
-function BUTTON.AddButton(size,x,y,color,sizex,sizey,image)
+function BUTTON.AddButton(size,x,y,color,sizex,sizey,image, txt)
     local button = {}
     button["Position"] = {['x'] = x,['y'] = y}
     button["Size"] = {['x'] = sizex or size,['y'] = sizex or size}
     button["Color"] = color
     button["img"] = image
+    if txt then
+        button["txt"] = txt[1]
+        button["xt"] = txt[2]
+        button["yt"] = txt[3]
+        button["colt"] = txt[4] or Color(255,255,255)
+    end
     button.ID = #BUTTONS_SUB+1
     BUTTONS_SUB[button.ID] = button
     return button
@@ -404,12 +578,20 @@ function BUTTON.ThinkButtons()
   --      print_t(v)
         if v and v.Position then
             size = v.Size
-            color = v.Color
+            color = Copy(v.Color)
+            local x,y = v.Position['x'], v.Position['y']
             love.graphics.setColor(color.r/255,color.g/255,color.b/255)
             if v.img then
-                love.graphics.draw( v.img, v.Position['x'], v.Position['y'], 0, size.x, size.y)
+                love.graphics.draw( v.img, x, y, 0, size.x, size.y)
             else
-                love.graphics.rectangle( "fill", v.Position.x, v.Position.y, size['x'], size['y'] )
+                love.graphics.rectangle( "fill", x, y, size['x'], size['y'] )
+            end
+            if v.txt then
+                love.graphics.setFont(FONTS_MODULES["opensansc15"])
+                color = Copy(v.colt)
+                love.graphics.setColor(color.r/255,color.g/255,color.b/255)
+                love.graphics.print(v.txt,x + v.xt ,y + v.yt)
+                love.graphics.setFont(FONTS_MODULES["opensansc12"])
             end
             love.graphics.setColor(1, 1, 1,1)
             if v.Think then

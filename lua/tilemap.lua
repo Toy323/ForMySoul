@@ -70,6 +70,7 @@ end
 function tile:AddCollision()
     static = {}
     static.b = love.physics.newBody(BASE_MODULE.world, self.Position["x"],self.Position["y"], "static")
+    static.b:setFixedRotation(true)
     static.s = love.physics.newRectangleShape(self.Size,self.Size)       
     static.f = love.physics.newFixture(static.b, static.s)
     static.f:setGroupIndex(-48)
@@ -125,6 +126,10 @@ function tiles:Think()
             size = v.Size or size
             color = v.Color or color
             love.graphics.setColor(color.r/255,color.g/255,color.b/255, (color.a or 255)/255)
+            if v.Phys then
+                love.graphics.polygon("fill", v.Phys.b:getWorldPoints(
+                           v.Phys.s:getPoints()))
+            end
             love.graphics.rectangle( "fill", v.Position.x or 0, v.Position.y or 0, size, size)
             love.graphics.setColor(1, 1, 1,1)
             if v.Think then

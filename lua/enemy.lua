@@ -9,21 +9,24 @@ BASE_ENEMY.enemiesList = {
         MovementSpeed = 45,
         AttackSpeed = 0.5,
         Color = Color(255,255,255),
-        Size = 32
+        Size = 32,
+        Cost = 1
     },
     ["Tank"] = {
         HP = 3250,
         MovementSpeed = 15,
         AttackSpeed = 0.5,
         Color = Color(255,255,255),
-        Size = 48
+        Size = 48,
+        Cost = 5
     },
     ["Runner"] = {
         HP = 315,
         MovementSpeed = 115,
         AttackSpeed = 0.2,
         Color = Color(166,71,255),
-        Size = 32
+        Size = 32,
+        Cost = 2
     },
     ["Fireman"] = {
         HP = 1000,
@@ -39,7 +42,59 @@ BASE_ENEMY.enemiesList = {
                 dmg.Damage = dmg.Damage * 2
             end
             return dmg
-        end
+        end,
+        Cost = 4
+    },
+    ["Bullet"] = {
+        HP = 250,
+        MovementSpeed = 535,
+        AttackSpeed = 0.01,
+        Color = Color(40,13,103),
+        Size = 5,
+        OnContact = function(self, proj)
+            if proj.IsTile then
+                proj.Health = proj.Health - 120
+            end
+        end,
+        Cost = 2
+    },
+    ["Dodger"] = {
+        HP = 350,
+        MovementSpeed = 45,
+        AttackSpeed = 0.01,
+        Color = Color(166,14,121),
+        Size = 35,
+        ProcDMG = function(self, dmg)
+            self.OrigY = math.random(250,1000)
+            return dmg
+        end,
+        Cost = 6
+    },
+    --[[["Doublid"] = {
+        HP = 110,
+        MovementSpeed = 315,
+        AttackSpeed = 0.01,
+        Color = Color(166,14,121),
+        Size = 35,
+        OnRemove = function(self,x,y)
+            for i=1,3 do
+                BASE_ENEMY:BaseEnemy("Runner", x - 35 * i,y):SetPos( x - 35 * i,y)
+            end
+        end,
+        Cost = 8
+    }, Слишком сломан]] 
+    ["Boss_Dodge"] = {
+        HP = 25000,
+        MovementSpeed = 65,
+        AttackSpeed = 0,
+        Color = Color(84,99,236),
+        Size = 125,
+        ProcDMG = function(self, dmg)
+            self.OrigY = math.random(250,1000)
+            self.MaxFreezes = 25
+            return dmg
+        end,
+        Cost = 50
     },
 }
 function ENEMY:Think()
@@ -51,6 +106,11 @@ ENEMY.IsEnemy = true
 
 function ENEMY:GetTypeTable()
     return BASE_ENEMY.enemiesList[self.EnemyType]
+end
+function ENEMY:OnContact(proj)
+    if self:GetTypeTable().OnContact then
+        self:GetTypeTable().OnContact(self, proj)
+    end
 end
 ENEMY.Statuses = {}
 function ENEMY:GetStatuses()
@@ -67,7 +127,7 @@ BASE_MODULE["status_burn"] = {
         end
     end,
     PreDraw = function(self, owner, col)
-        col = Color(col.r + 25 * math.sin(CurTime()*4),col.g - 199 * math.abs(math.sin(CurTime()*4)),col.b - 199 * math.abs(math.sin(CurTime()*4)))
+        col = Color(col.r + 55 * math.sin(CurTime()*4),col.g - 185 * math.abs(math.sin(CurTime()*4)),col.b - 170 * math.abs(math.sin(CurTime()*4)))
         return col
     end,
     Debuff = true
@@ -124,8 +184,12 @@ function ENEMY:TakeDamage(dmg, type)
     end
 end
 function ENEMY:Remove()
+    local x,y = self.Phys.b:getY(),self.Phys.b:getY()
+    self:OnRemove(x,y)
     self.Phys.b:destroy()
     ENEMIES[self.ID] = nil
+end
+function ENEMY:OnRemove()
 end
 
 function ENEMY:GetMaxHealth()
@@ -176,11 +240,15 @@ function ENEMY:Initialize(x,y)
     if tab.ProcDMG then
         self.ProcDMG = tab.ProcDMG
     end
-
+    if tab.OnRemove then
+        self.OnRemove = tab.OnRemove
+    end
+    self.OrigY = y
     static = {}
     static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
     static.b:setMass(1)
-    static.s = love.physics.newRectangleShape(self.Size.x,self.Size.y + 32)       
+    static.b:setFixedRotation(true)
+    static.s = love.physics.newRectangleShape(self.Size.x,self.Size.y)       
     static.f = love.physics.newFixture(static.b, static.s)
     static.f:setGroupIndex(-32)
     static.f:setUserData(tostring(self.ID).."G")
@@ -189,8 +257,8 @@ function ENEMY:Initialize(x,y)
 end
 ENEMY.NoWalk = 0
 function ENEMY:Walk(speed)
-    if self.NoWalk > CurTime() then return end
-    self.Phys.b:setLinearVelocity(self:GetSpeed() * -(speed or 1), 0)
+    if self.NoWalk > CurTime() or self.Phys.b:isDestroyed()  then return end
+    self.Phys.b:setLinearVelocity(self:GetSpeed() * -(speed or 1), self.OrigY - self.Phys.b:getY())
 end
 function BASE_ENEMY:BaseEnemy(specifize, x,y)
     base = Copy(ENEMY)
@@ -211,13 +279,13 @@ function BASE_ENEMY:Think()
     color = Color(2,2,2)
 
     for k,v in pairs(ENEMIES) do
-        if v and v.Position then
+        if v and v.Position  and not v.Phys.b:isDestroyed()  then
             size = v.Size
             color = Copy(v.Color)
             pos = v.Phys and {x = v.Phys.b:getX(), y = v.Phys.b:getY()} or v.Position
             local statuses = v.GetStatuses and v:GetStatuses()
     
-            if v:GetHealth() < v:GetMaxHealth() * 0.5 then
+            if v:GetHealth() < v:GetMaxHealth() * 0.15 then
                 color.g = color.g * math.sin(BASE_MODULE["Time"]*10 + v.ID)
                 color.b = color.b * math.sin(BASE_MODULE["Time"]*10 + v.ID)
             end
@@ -232,12 +300,23 @@ function BASE_ENEMY:Think()
             if v.img then
                 love.graphics.draw( v.img, pos['x'], pos['y'], 0, size.x, size.y)
             else
-                love.graphics.rectangle( "fill", pos.x, pos.y, size['x'], size['y'] )
+                --love.graphics.rectangle( "fill", pos.x, pos.y, size['x'], size['y'] )
+                love.graphics.polygon("fill", v.Phys.b:getWorldPoints(
+                    v.Phys.s:getPoints()))
             end
-            love.graphics.print(v:GetHealth(),pos['x'] - 33,pos['y'] - 44)
+            love.graphics.print(v:GetHealth(),pos['x'] - 33,pos['y'] - size.y*1.5)
             love.graphics.setColor(1, 1, 1, 1)
             if v.Think then
                 v:Think()
+            end
+            if pos.x < -100 then
+                BASE_MODULE.HealthNow = BASE_MODULE.HealthNow - v:GetHealth()
+                v:Remove()
+                if BASE_MODULE.HealthNow < 0 then
+                    for i=1,2 do
+                        BASE_MODULE.ButtonOnMinus.OnClickDo(-323,-323)
+                    end
+                end
             end
             if statuses then
                 for k2,v2 in pairs(statuses) do

@@ -5,7 +5,7 @@ PROJECTILE.Size = {x = 48,y = 48}
 require("lua/table_enc")
 BASE_PROJ.projectilesList = {
     ["Normal"] = {
-        Damage = 5,
+        Damage = 12,
         FlySpeed = 500,
         Color = Color(161,0,176),
         Size = 12
@@ -15,6 +15,7 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 70,
         Color = Color(0,138,176),
         Size = 60,
+        DMGType = "Energy",
         OnContact = function(self, enemy)
             enemy:TakeDamage(self.Damage or 30)
             self.Damage = self.Damage - 15
@@ -48,6 +49,22 @@ BASE_PROJ.projectilesList = {
             local burn = enemy:GiveStatus('burn')
             burn.Stacks = (burn.Stacks or 0) + 1
             self:Remove()
+        end
+    },
+    ["Gas"] = {
+        Damage = 25,
+        FlySpeed = 800,
+        Color = Color(35,26,212),
+        Size = 44,
+        OnContact = function(self, enemy)
+            if enemy.NoWalk > CurTime() then
+                return
+            end
+            enemy.NoWalk = CurTime() + 0.5
+            self:Remove()
+            if enemy.Phys.b and not enemy.Phys.b:isDestroyed() then
+                enemy.Phys.b:setLinearVelocity(0, 0)
+            end
         end
     },
     ["Shield"] = {
@@ -91,7 +108,7 @@ end
 
 function PROJECTILE:OnContact(enemy)
     if enemy and enemy.TakeDamage then
-        enemy:TakeDamage(self.Damage or 5)
+        enemy:TakeDamage(self.Damage or 5, self:GetTypeTable() and self:GetTypeTable().DMGType or "Normal")
     end
     self:Remove()
 end
@@ -144,7 +161,8 @@ function PROJECTILE:Initialize(x,y)
     static = {}
     static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
     static.b:setMass(0)
-    static.s = love.physics.newRectangleShape(self.Size.x + 24,self.Size.y + 48)       
+    static.b:setFixedRotation(true)
+    static.s = love.physics.newRectangleShape(self.Size.x,self.Size.y)       
     static.f = love.physics.newFixture(static.b, static.s)
     static.f:setGroupIndex(-48)
     static.f:setUserData(tostring(self.ID))
@@ -156,7 +174,9 @@ function PROJECTILE:Initialize(x,y)
     self.DieTime = CurTime()  + 30
 end
 function PROJECTILE:Walk(speed)
-    self.Phys.b:setLinearVelocity(self:GetSpeed() * (speed or 1), self.YSpeed or 0)
+    if self.Phys.b and not self.Removed and not self.Phys.b:isDestroyed() then
+        self.Phys.b:setLinearVelocity(self:GetSpeed() * (speed or 1), self.YSpeed or 0)
+    end
     if self.DieTime < CurTime() and not self.Removed then
         self:Remove()
     end
@@ -180,7 +200,7 @@ function BASE_PROJ:Think()
     color = Color(2,2,2)
 
     for k,v in pairs(projectiles) do
-        if v and v.Position then
+        if v and v.Position and not v.Removed and not v.Phys.b:isDestroyed() and v.Phys.b and v.Phys then
             size = v.Size
             color = Copy(v.Color)
             pos = v.Phys and {x = v.Phys.b:getX(), y = v.Phys.b:getY()} or v.Position
@@ -188,7 +208,9 @@ function BASE_PROJ:Think()
             if v.img then
                 love.graphics.draw( v.img, pos['x'], pos['y'], 0, size.x, size.y)
             else
-                love.graphics.rectangle( "fill", pos.x, pos.y, size['x'], size['y'] )
+                --love.graphics.rectangle( "fill", pos.x, pos.y, size['x'], size['y'] )
+                love.graphics.polygon("fill", v.Phys.b:getWorldPoints(
+                           v.Phys.s:getPoints()))
             end
             love.graphics.print((v.Damage or 5), pos['x'] - 24,pos['y'] - 44)
             love.graphics.setColor(1, 1, 1, 1)
