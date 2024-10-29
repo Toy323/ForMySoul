@@ -24,6 +24,22 @@ BASE_PROJ.projectilesList = {
             if  self.Pierces > 2 then
                 self:Remove()
             end
+            PlaySound("energySound",math.random(1,2))
+        end
+    },
+    ["MassDamage"] = {
+        Damage = 7500,
+        FlySpeed = 500,
+        Color = Color(9,4,46),
+        Size = 360,
+        DMGType = "Energy",
+        OnContact = function(self, enemy)
+            self.Phys.f:setCategory(4)
+            enemy.Phys.f:setMask(4)
+            DoNextFramePlus(function()
+               if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
+            end, 4500)
+            enemy:TakeDamage(self.Damage or 30)
         end
     },
     ["Frizer"] = {
@@ -57,14 +73,17 @@ BASE_PROJ.projectilesList = {
         Color = Color(35,26,212),
         Size = 44,
         OnContact = function(self, enemy)
+            enemy:TakeDamage(self.Damage, "Gas")
             if enemy.NoWalk > CurTime() then
                 return
             end
+            
             enemy.NoWalk = CurTime() + 0.5
             self:Remove()
             if enemy.Phys.b and not enemy.Phys.b:isDestroyed() then
                 enemy.Phys.b:setLinearVelocity(0, 0)
             end
+            
         end
     },
     ["Shield"] = {
@@ -82,6 +101,54 @@ BASE_PROJ.projectilesList = {
         end,
         Init = function(self)
             self.Size.x = 50
+        end
+    },
+    ["Bumrang"] = {
+        Damage = 650,
+        FlySpeed = 640,
+        Color = Color(0,138,176),
+        Size = 20,
+        Init = function(self)
+            self.Size.x = 70
+        end,
+        InitB = function(self)
+            self.Phys.b:setFixedRotation(false)
+            self.DieTime = CurTime()  + 530
+            self.Phys.b:applyTorque(666120)
+        end
+    },
+    ["RagingBullet"] = {
+        Damage = 5,
+        FlySpeed = 120,
+        Color = Color(176,0,0),
+        Size = 95,
+        OnContact = function(self, enemy)
+            local olddmg = self.Damage
+            self.Damage = math.max(-0.01,olddmg - math.abs(enemy:GetHealth()))
+            enemy:TakeDamage(olddmg or 30)
+            if self.Damage < 0 then
+                self:Remove()
+            end
+        end,
+        Init = function(self)
+            self.Size.x = 20
+        end
+    },
+    ["Chains"] = {
+        Damage = 30,
+        FlySpeed = 240,
+        Color = Color(108,108,108),
+        Size = 95,
+        OnContact = function(self, enemy)
+            local olddmg = self.Damage
+            if not enemy:GetTypeTable().Boss then
+                enemy.NoWalkingFull = CurTime() + 3
+            end
+            enemy:TakeDamage(olddmg or 30)
+            self:Remove()
+        end,
+        Init = function(self)
+            self.Size.x = 20
         end
     },
 }
@@ -114,7 +181,9 @@ function PROJECTILE:OnContact(enemy)
 end
 function PROJECTILE:Remove()
     self:OnRemove()
-    self.Phys.b:destroy()
+    if not self.Phys.b:isDestroyed() then
+        self.Phys.b:destroy()
+    end
     if not self.Phys.f:isDestroyed() then
         self.Phys.f:destroy()
     end
@@ -172,6 +241,9 @@ function PROJECTILE:Initialize(x,y)
         self.OnContact = abs.OnContact
     end
     self.DieTime = CurTime()  + 30
+    if abs.InitB then
+        abs.InitB(self)
+    end
 end
 function PROJECTILE:Walk(speed)
     if self.Phys.b and not self.Removed and not self.Phys.b:isDestroyed() then

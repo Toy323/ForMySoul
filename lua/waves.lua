@@ -13,17 +13,40 @@ local function Count(g)
     end
     return a
 end
-local waveHolder = {"Tank", "Fireman", "Soldier", "Runner"}
+local waveHolder = {"Tank_v2", "Fireman", "Runner", "Destroyer", "Powerupper", "Rusher", "Doublid"}
 local wavesD = {
-    {"Soldier", "Bullet"}, --, "Doublid"
+    {"Soldier", "Crip"},
     {"Soldier", "Runner"},
-    {"Bullet", "Runner", "Dodger"}, --, "Doublid"
-    {"Soldier", "Runner"},
+    {"Bullet", "Runner", "Dodger"},
+    {"Soldier", "Runner", "Doublid"},
     {"Soldier", "Runner", "Fireman", "Fireman"},
-    {"Soldier", "Fireman"},
-    {"Soldier", "Tank"},
+    {"Soldier", "Fireman", "Doublid", "Tank"},
+    {"Soldier", "Tank", "Doublid"},
     {"Tank", "Runner", "Dodger"},
-    {"Boss_Dodge"}
+    {"Boss_Dodge"}, -- 9
+    {"Soldier", "Fireman", "Dodger"},
+    {"Soldier", "Tank", "Dodger"},
+    {"Tank", "Runner", "Dodger", "Doublid"},
+    {"Destroyer", "Dodger", "Bullet"},
+    {"Dodger", "Rusher"},--14
+    {"Dodger"},--15
+    {"Boss_Dodge", "Destroyer", "Dodger"},--16
+    {"Rusher", "Doublid"},
+    {"Soldier", "Dodger", "Rusher"},
+    {"Powerupper", "Powerupper", "Fireman"},
+    {"Powerupper", "Powerupper", "Fireman", "Bullet"},
+    {"Powerupper", "Dodger", "Tank", "Tank"},
+    {"Boss_Destroyer"},
+    {"Doublid", "Bullet", "Bullet"},
+    {"Tank_v2", "Destroyer", "Tank_v2","Tank_v2","Tank_v2"},
+    {"Powerupper", "Powerupper", "Tank_v2"},
+    {"Mother", "Crip", "Crip", "Crip"},
+    {"Mother", "Crip", "Crip"},
+    {"Mother"},
+    {"Doublid", "Mother"},
+    {"Powerupper", "Fireman", "Bullet", "Bullet"},
+    {"Fireman", "Tank_v2"},
+    {"Tank_v2", "Mother", "Tank_v2"},
 
 }
 function WAVE:Start()
@@ -32,8 +55,8 @@ function WAVE:Start()
     if self.NextWave < CurTime() or self.EnemyOnWave-ene >= self.EnemyOnWave*0.65 then
         BASE_MODULE["WaveNow"] = BASE_MODULE["WaveNow"] + 1
         self.NextWave = CurTime() + 25 + self:GetWave()*5
-        BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 75 + self:GetWave()*25
-        local cost = math.random(1, self:GetWave()*3.6) + 4 + self:GetWave()*2
+        BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 175 + self:GetWave()*35
+        local cost = math.random(1, self:GetWave()*4) + 4 + self:GetWave()*2
         if self:GetWave() < 4 then
             cost = cost/3
         end
@@ -45,7 +68,7 @@ function WAVE:Start()
             local enemy = list2[name]
             cost = cost - enemy.Cost
             local y = math.random(250,1000)
-            local x = 2500 + math.random(-350,500)
+            local x = 2300 + math.random(-150,300)
             BASE_ENEMY:BaseEnemy(name, x,y):SetPos(x,y)
             zero = zero + 1
             if cost <= 0 then

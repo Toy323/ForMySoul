@@ -1,7 +1,8 @@
 BASE_MODULE = {}
 BASE_MODULE.Time = 0
-BASE_MODULE.Version = "0.0.7.3"
+BASE_MODULE.Version = "0.1.4.2"
 BASE_MODULE.WaveNow = 0
+BASE_MODULE["TimeR"] = 0
 SUBMODULE_INPUT = {}
 SUBMODULE_DRAW = {}
 PHANTOMS = {}
@@ -20,9 +21,20 @@ require('lua/tilemap')
 require('lua/enemy')
 require('lua/projectiles')
 require('lua/waves')
+require('lua/weapons')
+local addSound = love.audio.newSource
+BASE_MODULE.Sounds = {}
+local smgpause = love.graphics.newImage('images/pause.png')
+local resume = love.graphics.newImage('images/start.png')
 
+BASE_MODULE.Sounds["energySound"] = {
+    addSound("sound/power1.ogg","static"),
+    addSound("sound/power4.wav", "static"),
 
-
+}
+function PlaySound(variant, number)
+    BASE_MODULE.Sounds[variant][(number or 1)]:play()
+end
 local mouse = love.mouse
 -- success, valueOrErrormsg = runFile( name )
 local function runFile(name)
@@ -39,15 +51,19 @@ local bim = love.graphics.newImage('ritual.png')
 SELECTED_TOOL = 0
 function beginContact(a, b, coll)
 --	if a:getGroupIndex() ~= b:getGroupIndex() then
-        local enemy = string.sub(b:getUserData(), #b:getUserData()) == "G" and ENEMIES[tonumber(string.sub(b:getUserData(), 0, #b:getUserData()-1))] or string.sub(a:getUserData(), #a:getUserData()) == "G" and ENEMIES[tonumber(string.sub(a:getUserData(), 0, #a:getUserData()-1))]
+        local enemy = string.sub(b:getUserData(), #b:getUserData()) == "G" and ENEMIES[tonumber(string.sub(b:getUserData(), 0, #b:getUserData()-1))] or string.sub(a:getUserData(), #a:getUserData()) == "G" and ENEMIES[tonumber(string.sub(a:getUserData(), 0, #a:getUserData()-1))] or tilesblock[tonumber(a:getUserData())] or tilesblock[tonumber(b:getUserData())]
         local proj = string.sub(b:getUserData(), #b:getUserData()) ~= "G" and projectiles[tonumber(b:getUserData())] or projectiles[tonumber(a:getUserData())] or tilesblock[tonumber(a:getUserData())] or tilesblock[tonumber(b:getUserData())]
-        if proj and proj.OnContact and enemy then
+        if proj and proj.OnContact and enemy and enemy.IsEnemy then
             proj:OnContact(enemy)
         end
         if enemy and enemy.OnContact and proj and not proj.IsTile then
             enemy:OnContact(proj)
         elseif  enemy and enemy.OnContact and proj and proj.IsTile then
             enemy:OnContact(proj)
+        end
+        local contact = proj and proj.OnContact2 or enemy and enemy.OnContact2
+        if contact then
+            contact(enemy, proj)
         end
    -- end
 end
@@ -66,200 +82,25 @@ end
 function CurTime()
     return BASE_MODULE["Time"]
 end
-local innerF = {
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 1.9
-            for i=1,3 do
-                local x,y = self.Position["x"],self.Position['y']
-                local proj = BASE_PROJ:BasePROJ(nil,x,y)
-                proj.YSpeed = i == 1 and -60 or i == 2 and 60 or 0
-                proj:SetPos(x,y)
-            end
-            
-        end
-    end,
+function RealTime()
+    return BASE_MODULE["TimeR"]
+end
+local nextframes = {}
+local nextframes2 = {}
+function DoNextFrame(func)
+    nextframes[#nextframes + 1] = func
+end
+function DoNextFramePlus(func, frames)
+    nextframes2[#nextframes2 + 1] = {func, frames or 1}
+end
 
-    function(self)
-        if self.NextShoot < CurTime() -((self.NoShoot or 0)%3 == 0 and 3 or 0) then
-            self.NextShoot = CurTime() + 0.12
-            local x,y = self.Position["x"] ,self.Position['y'] 
-            local proj = BASE_PROJ:BasePROJ("Frizer",x,y)
-            proj:SetPos(x,y)
-            self.NoShoot = (self.NoShoot or 0) + 1
-        end
-    end,
-
-    function(self)
-        if self.NextShoot < CurTime()  then
-            self.NextShoot = CurTime() + 25
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ("Shield",x,y)
-            proj:SetPos(x,y)
-        end
-    end,
-
-    function(self)
-        if self.NextShoot < CurTime()  then
-            self.NextShoot = CurTime() + 0.9
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ(nil,x,y)
-            proj:SetPos(x,y)
-            proj:SetSpeed(240)
-            proj.Damage = 15
-            proj.Think = function()
-                proj.YSpeed = 160 * math.sin(CurTime() + proj.ID*4)
-                proj.Damage = proj.Damage + 0.02
-                proj:Walk()
-            end
-        end
-    end,
-
-    function(self)
-        if self.NextShoot < CurTime() -((self.NoShoot or 0)%12 == 0 and 6 or 0) then
-            self.NextShoot = CurTime() + 0.04
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ("Normal",x,y)
-            proj:SetPos(x,y)
-            proj.Damage = 4
-            self.NoShoot = (self.NoShoot or 0) + 1
-        end
-    end,
-
-    function(self)
-        self.LifeTime = (self.LifeTime or 0) + 0.001
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 1.9
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ("Normal",x,y)
-            proj:SetPos(x,y)
-            proj.Damage = math.floor(self.LifeTime*50)/50
-            proj:SetSpeed(300 - math.min(150, self.LifeTime))
-        end
-    end,
-
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 12
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ("LBall",x,y)
-            proj:SetPos(x,y)
-        end
-    end,
-
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 0.2
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ(nil,x,y)
-            proj:SetPos(x,y)
-            proj.DieTime = CurTime() + 0.4
-        end
-    end,
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 2.5
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ("FireNormal",x,y)
-            proj:SetPos(x,y)
-            proj.DieTime = CurTime() + 12
-        end
-    end,
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 4.5
-            local x,y = self.Position["x"],self.Position['y']
-            local proj = BASE_PROJ:BasePROJ("Gas",x,y)
-            proj:SetPos(x,y)
-        end
-    end,
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 0.34
-            for i=1,5 do
-                local x,y = self.Position["x"],self.Position['y']
-                local proj = BASE_PROJ:BasePROJ(nil,x,y)
-                proj.YSpeed = i == 1 and -30 or i == 2 and 30 or i == 3 and 70 or i == 4 and -70 or 0
-                proj.Damage = 50
-                proj:SetPos(x,y)
-            end
-            
-        end
-    end,
-    function(self)
-        if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 10
-            BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 65
-        end
-    end,
-}
-local colBullet = Color(133,16,88)
-local images = {
-    {love.graphics.newImage('images/tripla.png'), colBullet},
-    {love.graphics.newImage('images/friza.png'), Color(41,241,221)},
-    {love.graphics.newImage('images/shield.png'), Color(255,255,255)},
-    {love.graphics.newImage('images/sinusoid.png'), colBullet},
-    {love.graphics.newImage('images/charger.png'), colBullet},
-    {love.graphics.newImage('images/powerer.png'), colBullet},
-    {love.graphics.newImage('images/lballer.png'), Color(0,56,141)},
-    {love.graphics.newImage('images/alwaysgatling.png'), colBullet},
-    {love.graphics.newImage('images/flamekicker.png'), Color(158,58,0)},
-    {love.graphics.newImage('images/vyazk.png'), Color(0,158,3)},
-    {love.graphics.newImage('images/supra.png'), colBullet},
-    {love.graphics.newImage('images/miner.png'), Color(46,46,46)},
-}
-local costOfWep = {
-    tripla = 50,
-    frize = 125,
-    shield = 600,
-    sinusoid = 125,
-    charger = 250,
-    powerer = 150,
-    lballer = 250,
-    alwaysgatling = 250,
-    flamekicker = 300,
-    news = 250,
-    supergun = 2250,
-    money = 125,
-}
 local ready = love.graphics.newImage('images/ready.png')
-local baseMoney = 250
+local baseMoney = 450
 BASE_MODULE["MoneyNow"] = baseMoney
-BASE_MODULE.HealthNow = 7500
+BASE_MODULE.HealthNow = 10250
 function GetM()
     return BASE_MODULE.MoneyNow
 end
-local weapons = {
-    "tripla",
-    "frize",
-    "shield",
-    "sinusoid",
-    "charger",
-    "powerer",
-    "lballer",
-    "alwaysgatling",
-    "flamekicker",
-    "news",
-    "supergun",
-    "money",
-
-
-}
-local desc = {
-    "Тристрел\nСтреляет тремя пулями по 15 урона каждая.\nМожет задевать другии линии.",
-    "Морозный СМГ\nСтреляет тремя пулями подряд наносящими 10(x2 урон по огнeнным врагам).\nКаждое попадание уменьшает скорость врага на 15%, дeйстуeт 5 раз.\nСтреляет прямо.",
-    "Генератор Щита\nЗадевает половину верхней линии и наносит 500 урона(урон уменьшается когда наносит урон по врагам с маленьким здоровьем).\nСтреляет прямо.",
-    "Воротила\nСтреляет пулями с волнообразной траекторирей, при этом урон в полете увеличивается.\nМожет задевать другие линии.",
-    "Зарядник\nЗаряжает атаку, чтобы выстрельнуть 12 пулями подряд, у которых 4 урона.\nСтреляет прямо.",
-    "Усиливающийся пистолет\nНемного увеличивает урон своих пуль когда стоит на поле.\nСтреляет прямо.",
-    "Электрошаровик\nСтреляет шаровой молнией, которая можeт попасть по врагу 3 раза и послe уничтожится.\nСтреляет прямо.\nУрон уменьшается на 15 когда попадает по врагу.",
-    "Короткий миниган\nВсегда стреляет пулями по 15 урона, но на очeнь короткой дистанции.\nСтреляет прямо.",
-    "Огнепых\nСтреляет огненным шаром, который поджигаeт врага.\nСтатус Поджига наносит 0.0075% от макс.здоровья урон. Каждое попадание дает дополнительные 0.0075% урона от макс.здоровья.\nСтреляет прямо.",
-    "Вязкий газ\nСтреляет вязкой пулей с уроном 25, которая останавливаeт врага на 0.5 секунды и при этом можeт сильно оттолкнуть eго.\nСтреляет прямо.",
-    "Супер-пушка\nСтреляет 5 пулями за раз с 50 уроном и с маленькой задержкой.\nМожет попадать по всему полю.",
-    "Добытчик минералов\nКаждые 10 секунд дает 65 минералов.\nМинералы нужны всегда.",
-
-}
 function love.load()
     print(love.window.getFullscreen())
     love.window.setFullscreen(true)
@@ -268,8 +109,17 @@ function love.load()
     local cache = {}
     
     local button = BUTTON.AddButton(1,1500,66,Color(5,130,28),1,1, ready)
-    button.OnClickDo = function() WAVE:Start() 
-        tiles:CreateMapFull(0,320,5,125, FORMULA_PARALEP_R, 12, Color(156,215,96))
+    button.OnClickDo = function() 
+        if not BASE_MODULE.ActiveMode then
+            tiles:CreateMapFull(0,320,5,125, FORMULA_PARALEP_R, 12, Color(156,215,96))
+        end
+        WAVE:Start()
+    end
+    local button = BUTTON.AddButton(1,1570,66,Color(209,185,29),1,1, smgpause)
+    button.OnClickDo = function() 
+       BASE_MODULE.OnPause = not BASE_MODULE.OnPause
+       button.img = BASE_MODULE.OnPause and resume or smgpause
+       button.Color = BASE_MODULE.OnPause and Color(155,220,141) or Color(209,185,29)
     end
 
     local oldy,oldx = 66, 1222
@@ -311,19 +161,19 @@ function love.load()
     --table.insert(cache,button.ID)
     local was = {}
     local frremove = {}
-    for i=1,#weapons do
-        local img = images[i] and images[i][1] or nil
-        local button = BUTTON.AddButton(48,64*2 + 64 * ((i%9)-1),120 + 56 * math.ceil(i/9), img and images[i][2] or Color(51,167,169), img and 1, img and 1, img, {costOfWep[weapons[i]], 0, -15})
+    for i=1,#WEAPONS.NamesByID do
+        local img = WEAPONS.IconsByID[i] and WEAPONS.IconsByID[i][1] or nil
+        local button = BUTTON.AddButton(48,64*2 + 64 * ((i%9)-1),120 + 56 * math.ceil(i/9), img and WEAPONS.IconsByID[i][2] or Color(51,167,169), img and 1, img and 1, img, {WEAPONS.CostByName[WEAPONS.NamesByID[i]], 0, -15})
         frremove[#frremove + 1] = button.ID
         button.OnClickDo = function(x,y)
             if SELECTED_TOOL ~= button and not button.NOPICK then
                 --SELECTED_TOOL = button
                 table.insert(was, button.ID)
                 local g = #was
-                local img = images[i] and images[i][1] or nil
+                local img = WEAPONS.IconsByID[i] and WEAPONS.IconsByID[i][1] or nil
                 button.NOPICK = true
                 button.Position = {x = 222222,y =222222}
-                local gal = BUTTON.AddButton(48, 64*2 + 64 * g, 66, img and images[i][2] or Color(51,167,169), img and 1, img and 1, img, {costOfWep[weapons[i]], 0, -15})
+                local gal = BUTTON.AddButton(48, 64*2 + 64 * g, 66, img and WEAPONS.IconsByID[i][2] or Color(51,167,169), img and 1, img and 1, img, {WEAPONS.CostByName[WEAPONS.NamesByID[i]], 0, -15})
                 BASE_MODULE["ButtonOn"..g] = gal
                 table.insert(cache, gal.ID)
                 if #was > 8 then
@@ -333,6 +183,7 @@ function love.load()
                         end
                     end
                 end
+                gal.WeaponOnMe = WEAPONS.NamesByID[i]
                 gal.OnClickDo = function(x,y)
                     if SELECTED_TOOL ~= gal then
                         SELECTED_TOOL = gal
@@ -341,24 +192,43 @@ function love.load()
                         local finded = false
                         for k,v in pairs(tilesblock) do
                             if x < v.Position.x + (v.Size or 2)*1.5  and x > v.Position.x and y < v.Position.y + (v.Size or 2)*1.5 and y > v.Position.y then
-                                if BASE_MODULE["MoneyNow"] < costOfWep[weapons[i]] then
-                                    break
-                                end
-                                v:SetColor(Color(5 + 10*i,74,20 + i*30))
-                                BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - costOfWep[weapons[i]]
-                                finded = true
-                                v.NextShoot = CurTime() + 1.1
-                                v:AddCollision()
-                                v.Think = innerF[i] or function()
-                                    if v.NextShoot < CurTime() then
-                                        v.NextShoot = CurTime() + 1.6
-                                        BASE_PROJ:BasePROJ(nil, x,y):SetPos(x,y)
+                                if v.HasCollision then
+                                    v:Remove()
+                                    break 
+                                else
+                                    if BASE_MODULE["MoneyNow"] < WEAPONS.CostByName[WEAPONS.NamesByID[i]] then
+                                        break
                                     end
+                                    v:SetColor(Color(5 + 10*i,74,20 + i*30))
+                                    BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - WEAPONS.CostByName[WEAPONS.NamesByID[i]]
+                                    finded = true
+                                    v.NextShoot = CurTime() + 0.7
+                                    v.Init = function()
+                                        
+                                    end
+                                    v.InitB = function()
+                                        
+                                    end
+                                    local funcw = WEAPONS.FuncByID[i]
+                                    v.WeaponOnMe = WEAPONS.NamesByID[i]
+                                    if type(funcw) == "table" then
+                                        for k2,v2 in pairs(funcw) do
+                                            v[k2] = v2
+                                        end
+                                    else
+                                        v.Think = funcw or function()
+                                            if v.NextShoot < CurTime() then
+                                                v.NextShoot = CurTime() + 1.6
+                                                BASE_PROJ:BasePROJ(nil, x,y):SetPos(x,y)
+                                            end
+                                        end
+                                    end
+                                    v:AddCollision()
+                                    v.OnRemove = function(self,x,y)
+                                        tile:Create(x,y,125/2,Color(156,215,96))
+                                    end
+                                    break 
                                 end
-                                v.OnRemove = function(self,x,y)
-                                    tile:Create(x,y,125/2,Color(156,215,96))
-                                end
-                                break 
                             end
                         end
                     end
@@ -373,8 +243,8 @@ function love.load()
                     end
                 end
                 gal.OnSeen = function(x,y)
-                    if desc[i] and SELECTED_TOOL ~= gal then
-                        love.graphics.print(desc[i],x,y+32)
+                    if  WEAPONS.DescByID[i] and SELECTED_TOOL ~= gal then
+                        love.graphics.print( WEAPONS.DescByID[i],x,y+32)
                     end
                 end
             end
@@ -390,8 +260,8 @@ function love.load()
             end
         end
         button.OnSeen = function(x,y)
-            if desc[i] then
-                love.graphics.print(desc[i],x,y+32)
+            if WEAPONS.DescByID[i] then
+                love.graphics.print( WEAPONS.DescByID[i],x,y+32)
             end
         end
         table.insert(cache,button.ID)
@@ -423,9 +293,13 @@ function love.load()
     --tiles:CreateMapLineDown(1,1,30,2)
 
 end
+BASE_MODULE.OnPause = false
 function love.update(time)
-    BASE_MODULE["Time"] = (BASE_MODULE["Time"] or 0) + time
-    BASE_MODULE.world:update(time)
+    BASE_MODULE["TimeR"] = (BASE_MODULE["TimeR"] or 0) + time
+    if not BASE_MODULE.OnPause then
+        BASE_MODULE["Time"] = (BASE_MODULE["Time"] or 0) + time
+        BASE_MODULE.world:update(time)
+    end
 end
 function love.keypressed(button, code, isrepeat)
     if button then
@@ -501,7 +375,20 @@ function SUBMODULE_DRAW.Think()
     BUTTON.ThinkButtons()
     BASE_ENEMY:Think()
     BASE_PROJ:Think()
+    for k,v in pairs(nextframes) do
+        v()
+    end
+    nextframes = {}
 
+
+    for k,v in pairs(nextframes2) do
+        if v[2] > 1 then
+            v[2] = v[2] - 1
+        else
+            v[1]()
+        end
+    end
+    nextframes2 = {}
     local x2,y2 = 0,0
     for k,button in pairs(BUTTONS_SUB) do
         local size = button.Size
@@ -592,6 +479,11 @@ function BUTTON.ThinkButtons()
                 love.graphics.setColor(color.r/255,color.g/255,color.b/255)
                 love.graphics.print(v.txt,x + v.xt ,y + v.yt)
                 love.graphics.setFont(FONTS_MODULES["opensansc12"])
+            end
+            if v.WeaponOnMe and BASE_MODULE[v.WeaponOnMe.."_cd"] and BASE_MODULE[v.WeaponOnMe.."_cd"] > CurTime() then
+                local cd = BASE_MODULE[v.WeaponOnMe.."_cd"]
+                love.graphics.setColor(0.04,0.04,0.04,0.35)
+                love.graphics.rectangle( "fill", x, y+64-64* (cd-CurTime())/(WEAPONS.BaseCD[v.WeaponOnMe] or 1), 64, 64 * (cd-CurTime())/(WEAPONS.BaseCD[v.WeaponOnMe] or 1))
             end
             love.graphics.setColor(1, 1, 1,1)
             if v.Think then

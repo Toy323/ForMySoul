@@ -20,6 +20,14 @@ BASE_ENEMY.enemiesList = {
         Size = 48,
         Cost = 5
     },
+    ["Tank_v2"] = {
+        HP = 13250,
+        MovementSpeed = 65,
+        AttackSpeed = 0.1,
+        Color = Color(255,255,255),
+        Size = 64,
+        Cost = 15
+    },
     ["Runner"] = {
         HP = 315,
         MovementSpeed = 115,
@@ -27,6 +35,14 @@ BASE_ENEMY.enemiesList = {
         Color = Color(166,71,255),
         Size = 32,
         Cost = 2
+    },
+    ["Crip"] = {
+        HP = 100,
+        MovementSpeed = 215,
+        AttackSpeed = 2,
+        Color = Color(120,104,136),
+        Size = 12,
+        Cost = 1
     },
     ["Fireman"] = {
         HP = 1000,
@@ -70,19 +86,44 @@ BASE_ENEMY.enemiesList = {
         end,
         Cost = 6
     },
-    --[[["Doublid"] = {
-        HP = 110,
-        MovementSpeed = 315,
+    ["Dodger"] = {
+        HP = 5000,
+        MovementSpeed = 125,
+        AttackSpeed = 0.01,
+        Color = Color(143,192,180),
+        Size = 15,
+        ProcDMG = function(self, dmg)
+            self.OrigY = math.random(250,1000)
+            return dmg
+        end,
+        Cost = 25
+    },
+    ["Doublid"] = {
+        HP = 500,
+        MovementSpeed = 115,
         AttackSpeed = 0.01,
         Color = Color(166,14,121),
-        Size = 35,
+        Size = 65,
         OnRemove = function(self,x,y)
             for i=1,3 do
-                BASE_ENEMY:BaseEnemy("Runner", x - 35 * i,y):SetPos( x - 35 * i,y)
+                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Runner", x-7*i,y):SetPos( x-7*i,y) end, 1)
             end
         end,
         Cost = 8
-    }, Слишком сломан]] 
+    },
+    ["Mother"] = {
+        HP = 12000,
+        MovementSpeed = 70,
+        AttackSpeed = 0.01,
+        Color = Color(92,3,66),
+        Size = 165,
+        ProcDMG = function(self, dmg)
+            local x,y = self.Phys.b:getX(),self.Phys.b:getY() + math.random(-120,120)
+            DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Crip", x-30,y):SetPos( x-30,y) end, 1)
+            return dmg
+        end,
+        Cost = 90
+    },
     ["Boss_Dodge"] = {
         HP = 25000,
         MovementSpeed = 65,
@@ -94,8 +135,71 @@ BASE_ENEMY.enemiesList = {
             self.MaxFreezes = 25
             return dmg
         end,
-        Cost = 50
+        DamageX = 10,
+        Cost = 250,
+        Boss = true
     },
+    ["Destroyer"] = {
+        HP = 450,
+        MovementSpeed = 735,
+        AttackSpeed = 5,
+        Color = Color(32,210,139),
+        Size = 105,
+        OnContact = function(self, proj)
+            if proj.IsTile then
+                proj.Health = proj.Health - 500
+            end
+        end,
+        Cost = 25
+    },
+    ["Rusher"] = {
+        HP = 55,
+        MovementSpeed = 335,
+        AttackSpeed = 0.01,
+        Color = Color(29,9,81),
+        Size = 35,
+        ProcDMG = function(self, dmg)
+            dmg.Damage = 1
+            return dmg
+        end,
+        Cost = 15
+    },
+    ["Powerupper"] = {
+        HP = 9500,
+        MovementSpeed = 5,
+        AttackSpeed = 0.01,
+        Color = Color(210,96,19),
+        Size = 55,
+        ProcDMG = function(self, dmg)
+            dmg.Damage = dmg.Damage * 0.75
+            self:SetSpeed(self:GetSpeed() + 1)
+            return dmg
+        end,
+        Cost = 50
+    },        
+    ["Boss_Destroyer"] = {
+        HP = 75000,
+        MovementSpeed = 50,
+        AttackSpeed = 1,
+        Color = Color(199,255,232),
+        Size = 155,
+        OnContact = function(self, proj)
+            if proj.IsTile then
+                proj.Health = proj.Health - 200
+                if proj.Health <= 0 then
+                    proj:Remove()
+                end
+            end
+        end,
+        ProcDMG = function(self, dmg)
+            self:SetSpeed(math.min(85,self:GetSpeed() + 1))
+            return dmg
+        end,
+        Cost = 540,
+        Boss = true
+    },
+
+    
 }
 function ENEMY:Think()
     self:Walk()
@@ -127,7 +231,7 @@ BASE_MODULE["status_burn"] = {
         end
     end,
     PreDraw = function(self, owner, col)
-        col = Color(col.r + 55 * math.sin(CurTime()*4),col.g - 185 * math.abs(math.sin(CurTime()*4)),col.b - 170 * math.abs(math.sin(CurTime()*4)))
+        col = Color(col.r + 55 * math.sin(RealTime()*4),col.g - 185 * math.abs(math.sin(RealTime()*4)),col.b - 170 * math.abs(math.sin(RealTime()*4)))
         return col
     end,
     Debuff = true
@@ -184,7 +288,7 @@ function ENEMY:TakeDamage(dmg, type)
     end
 end
 function ENEMY:Remove()
-    local x,y = self.Phys.b:getY(),self.Phys.b:getY()
+    local x,y = self.Phys.b:getX(),self.Phys.b:getY()
     self:OnRemove(x,y)
     self.Phys.b:destroy()
     ENEMIES[self.ID] = nil
@@ -230,12 +334,13 @@ end
 
 function ENEMY:Initialize(x,y)
     local tab = self:GetTypeTable()
-    self:SetSpeed(tab.MovementSpeed)
+    self:SetSpeed(tab.MovementSpeed * (WAVE:GetWave() < 5 and 0.5 or 1))
     local hp = tab.HP
     self:SetMaxHealth(hp)
     self:SetHealth(hp)
     self:SetColor(tab.Color)
     self.AttackSpeed = tab.AttackSpeed
+    self.DamageX = tab.DamageX or 1
     self.Size = {x = tab.Size,y = tab.Size}
     if tab.ProcDMG then
         self.ProcDMG = tab.ProcDMG
@@ -256,9 +361,10 @@ function ENEMY:Initialize(x,y)
     self.Phys = static
 end
 ENEMY.NoWalk = 0
+ENEMY.NoWalkingFull = 0
 function ENEMY:Walk(speed)
     if self.NoWalk > CurTime() or self.Phys.b:isDestroyed()  then return end
-    self.Phys.b:setLinearVelocity(self:GetSpeed() * -(speed or 1), self.OrigY - self.Phys.b:getY())
+    self.Phys.b:setLinearVelocity(self:GetSpeed() * (speed or 1) * (self.NoWalkingFull > CurTime() and 0 or -1), self.OrigY - self.Phys.b:getY())
 end
 function BASE_ENEMY:BaseEnemy(specifize, x,y)
     base = Copy(ENEMY)

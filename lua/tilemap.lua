@@ -43,16 +43,21 @@ function tile:SetColor(color)
     self.Color = color
     tilesblock[self.ID].Color = color
 end
+tile.BHealth = 250
 tile.Health = 250
 
 function tile:OnContact(enemy)
-    if enemy and enemy.AttackSpeed and (enemy.NextEat or 0) < CurTime() then
-        self.Health = self.Health - 25
-        enemy.NextEat = CurTime() + enemy.AttackSpeed*5
-        enemy.Phys.b:applyForce(enemy:GetSpeed()*15, 0)
-        enemy.NoWalk = CurTime() + 0.2
-        if self.Health <= 0 then
-            self:Remove()
+    if enemy and enemy.Phys and enemy.Phys.b then
+        if enemy.GetSpeed and enemy:GetSpeed() then
+            enemy.Phys.b:applyForce(enemy:GetSpeed()*85, 0)
+            if enemy.AttackSpeed and (enemy.NextEat or 0) < CurTime() then
+                self.Health = self.Health - 25 * enemy.DamageX 
+                enemy.NextEat = CurTime() + enemy.AttackSpeed*5
+                enemy.NoWalk = CurTime() + 0.4
+                if self.Health <= 0 then
+                    self:Remove()
+                end
+            end
         end
     end
 end
@@ -68,16 +73,26 @@ function tile:CreateButton(x, y, size, color, func)
     button.Parent = selfy
 end
 function tile:AddCollision()
-    static = {}
-    static.b = love.physics.newBody(BASE_MODULE.world, self.Position["x"],self.Position["y"], "static")
-    static.b:setFixedRotation(true)
-    static.s = love.physics.newRectangleShape(self.Size,self.Size)       
-    static.f = love.physics.newFixture(static.b, static.s)
-    static.f:setGroupIndex(-48)
-    static.f:setUserData(tostring(self.ID))
-    static.f:setRestitution(0.1) 
-    self.Phys = static
-    self.HasCollision = true
+    tile.Health = tile.BHealth
+    tile.SizeY = tile.Size
+    if self.Init then
+        self:Init()
+    end
+    if not self.HasCollision then
+        static = {}
+        static.b = love.physics.newBody(BASE_MODULE.world, self.Position["x"],self.Position["y"], "static")
+        static.b:setFixedRotation(true)
+        static.s = love.physics.newRectangleShape(self.SizeX or self.Size,self.SizeY or self.Size)       
+        static.f = love.physics.newFixture(static.b, static.s)
+        static.f:setGroupIndex(-48)
+        static.f:setUserData(tostring(self.ID))
+        static.f:setRestitution(0.1) 
+        self.Phys = static
+        self.HasCollision = true
+    end
+    if self.InitB then
+        self:InitB()
+    end
 end
 
 function tiles:CreateRowDow(x, y, size, num, col)
