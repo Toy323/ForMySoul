@@ -13,7 +13,7 @@ local function Count(g)
     end
     return a
 end
-local waveHolder = {"Tank_v2", "Fireman", "Runner", "Destroyer", "Powerupper", "Rusher", "Doublid"}
+local waveHolder = {"Tank_v2", "Fireman", "Runner","Dodger_v2", "Destroyer", "Powerupper", "Rusher", "Doublid", "Soldier_v2"}
 local wavesD = {
     {"Soldier", "Crip"},
     {"Soldier", "Runner"},
@@ -39,16 +39,30 @@ local wavesD = {
     {"Boss_Destroyer"},
     {"Doublid", "Bullet", "Bullet"},
     {"Tank_v2", "Destroyer", "Tank_v2","Tank_v2","Tank_v2"},
-    {"Powerupper", "Powerupper", "Tank_v2"},
+    {"Powerupper", "Powerupper", "Tank_v2"},--25
     {"Mother", "Crip", "Crip", "Crip"},
     {"Mother", "Crip", "Crip"},
-    {"Mother"},
+    {"Mother"},--28
     {"Doublid", "Mother"},
     {"Powerupper", "Fireman", "Bullet", "Bullet"},
     {"Fireman", "Tank_v2"},
-    {"Tank_v2", "Mother", "Tank_v2"},
-
+    {"Fireman", "Tank_v2"},
+    {"Fireman", "Tank_v2"},
+    {"Mother"},--34
+    {"Dodger_v2"},--35
+    {"Tank_v2", "Mother",  "Tank_v2"},--36
+    {"Dodger_v2",  "Tank_v2"}, -- 37
+    {"Dodger_v2", "Soldier_v2"}, -- 38
+    {"Dodger_v2", "Soldier_v2"}, -- 39
 }
+local addWaveMoneys = {
+    3,
+    1,
+    [35] = -1250,
+    [39] = 250,
+}
+addWaveMoneys[50] = 1250
+wavesD[75] = {"Boss_Mother"}
 function WAVE:Start()
     BASE_MODULE.ActiveMode = true
     local ene = Count(ENEMIES)
@@ -56,7 +70,7 @@ function WAVE:Start()
         BASE_MODULE["WaveNow"] = BASE_MODULE["WaveNow"] + 1
         self.NextWave = CurTime() + 25 + self:GetWave()*5
         BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 175 + self:GetWave()*35
-        local cost = math.random(1, self:GetWave()*4) + 4 + self:GetWave()*2
+        local cost = math.ceil(rand(1, self:GetWave()*4) + 4 + self:GetWave()^1.35 + (addWaveMoneys[BASE_MODULE["WaveNow"]] or 0))
         if self:GetWave() < 4 then
             cost = cost/3
         end
@@ -64,10 +78,10 @@ function WAVE:Start()
         local pick = wavesD[self:GetWave()]
         local zero = 0
         while cost > 0 do
-            local name = pick and pick[math.random(1,#pick)] or waveHolder[math.random(1,#waveHolder)]
+            local name = pick and pick[rand(1,#pick)] or waveHolder[rand(1,#waveHolder)]
             local enemy = list2[name]
             cost = cost - enemy.Cost
-            local y = math.random(250,1000)
+            local y = rand(250,1000)
             local x = 2300 + math.random(-150,300)
             BASE_ENEMY:BaseEnemy(name, x,y):SetPos(x,y)
             zero = zero + 1

@@ -17,14 +17,14 @@ BASE_PROJ.projectilesList = {
         Size = 60,
         DMGType = "Energy",
         OnContact = function(self, enemy)
-            enemy:TakeDamage(self.Damage or 30)
+            enemy:TakeDamage(self.Damage or 30, self.DMGType)
             self.Damage = self.Damage - 15
             self.Size = {x= self.Size.x - 12,y = self.Size.y - 12}
             self.Pierces  = self.Pierces  + 1
             if  self.Pierces > 2 then
                 self:Remove()
             end
-            PlaySound("energySound",math.random(1,2))
+            PlaySound("energySound",math.random(1,#BASE_MODULE.Sounds["energySound"]))
         end
     },
     ["MassDamage"] = {
@@ -39,9 +39,60 @@ BASE_PROJ.projectilesList = {
             DoNextFramePlus(function()
                if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
             end, 4500)
-            enemy:TakeDamage(self.Damage or 30)
+            enemy:TakeDamage(self.Damage or 30, self.DMGType)
         end
     },
+    ["Explosive"] = {
+        Damage = 300,
+        FlySpeed = 0,
+        Color = Color(69,14,8),
+        Size = 12,
+        DMGType = "Explosive",
+        OnContact = function(self, enemy)
+            self.Phys.f:setCategory(6)
+            enemy.Phys.f:setMask(6)
+            DoNextFramePlus(function()
+               if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
+            end, 300)
+            enemy:TakeDamage(self.Damage or 30, self.DMGType)
+        end,
+        Think = function(self)
+            if BASE_MODULE.OnPause then return end
+            self.Size.x = self.Size.x * 1.11
+            self.Size.y = self.Size.y * 1.11
+            local static = self.Phys
+            static.s = love.physics.newRectangleShape(self.Size.x,self.Size.y)       
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-48)
+            static.f:setUserData(tostring(self.ID))
+            static.f:setRestitution(0.1) 
+            self.Phys = static
+            if self.Size.y > (self.MaxY or 560) then
+                self:Remove()
+            end
+        end
+    },
+    ["ExploBullet"] = {
+        Damage = 25,
+        FlySpeed = 550,
+        Color = Color(176,0,0),
+        Size = 25,
+        OnContact = function(self, enemy)
+            enemy:TakeDamage(self.Damage or 30, "Explosive")
+            if self.Phys.b then
+                local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                DoNextFrame(function()
+                    local proj = BASE_PROJ:BasePROJ("Explosive",x,y)
+                    proj:SetPos(x,y)
+                    proj.MaxY = 150
+                    proj.Damage = 25
+                    proj.DieTime = CurTime() + 3
+                end)
+            end
+            self:Remove()
+        end
+    },
+    
     ["Frizer"] = {
         Damage = 10,
         FlySpeed = 350,
@@ -94,7 +145,7 @@ BASE_PROJ.projectilesList = {
         OnContact = function(self, enemy)
             local olddmg = self.Damage
             self.Damage = math.max(-0.01,olddmg - math.abs(enemy:GetHealth()))
-            enemy:TakeDamage(olddmg or 30)
+            enemy:TakeDamage(olddmg or 30, self.DMGType)
             if self.Damage < 0 then
                 self:Remove()
             end
@@ -125,7 +176,7 @@ BASE_PROJ.projectilesList = {
         OnContact = function(self, enemy)
             local olddmg = self.Damage
             self.Damage = math.max(-0.01,olddmg - math.abs(enemy:GetHealth()))
-            enemy:TakeDamage(olddmg or 30)
+            enemy:TakeDamage(olddmg or 30, self.DMGType)
             if self.Damage < 0 then
                 self:Remove()
             end
@@ -144,15 +195,32 @@ BASE_PROJ.projectilesList = {
             if not enemy:GetTypeTable().Boss then
                 enemy.NoWalkingFull = CurTime() + 3
             end
-            enemy:TakeDamage(olddmg or 30)
+            enemy:TakeDamage(olddmg or 30, self.DMGType)
             self:Remove()
         end,
         Init = function(self)
             self.Size.x = 20
         end
     },
+    ["DoomBall"] = {
+        Damage = 0,
+        FlySpeed = 20,
+        Color = Color(0,0,0),
+        Size = 1500,
+        OnContact = function(self, enemy)
+            self.Phys.f:setCategory(5)
+            enemy.Phys.f:setMask(5)
+            DoNextFramePlus(function()
+               if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
+            end, 10000)
+            local burn = enemy:GiveStatus('doomed')
+        end
+    },
 }
 function PROJECTILE:Think()
+    if self.AddThink then
+        self:AddThink()
+    end
     self:Walk()
 end
 PROJECTILE.IsProjectile = true
@@ -221,12 +289,16 @@ function PROJECTILE:Initialize(x,y)
     self:SetSpeed(abs.FlySpeed)
     self:SetColor(self:GetTypeTable().Color)
     self.Size = {x = abs.Size,y = abs.Size}
+    self.DMGType = self:GetTypeTable() and self:GetTypeTable().DMGType or "Normal"
 
     self.Damage = abs.Damage or 5
     if abs.Init then
         abs.Init(self)
     end
-
+    if abs.Think then
+        self.AddThink = abs.Think
+    end
+    self.World = BASE_MODULE.world
     static = {}
     static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
     static.b:setMass(0)
@@ -246,7 +318,7 @@ function PROJECTILE:Initialize(x,y)
     end
 end
 function PROJECTILE:Walk(speed)
-    if self.Phys.b and not self.Removed and not self.Phys.b:isDestroyed() then
+    if self.Phys and self.Phys.b and not self.Removed and not self.Phys.b:isDestroyed() then
         self.Phys.b:setLinearVelocity(self:GetSpeed() * (speed or 1), self.YSpeed or 0)
     end
     if self.DieTime < CurTime() and not self.Removed then
@@ -272,7 +344,7 @@ function BASE_PROJ:Think()
     color = Color(2,2,2)
 
     for k,v in pairs(projectiles) do
-        if v and v.Position and not v.Removed and not v.Phys.b:isDestroyed() and v.Phys.b and v.Phys then
+        if v and v.Position and not v.Removed and not v.Phys.b:isDestroyed() and v.Phys.b and v.World == BASE_MODULE.world then
             size = v.Size
             color = Copy(v.Color)
             pos = v.Phys and {x = v.Phys.b:getX(), y = v.Phys.b:getY()} or v.Position

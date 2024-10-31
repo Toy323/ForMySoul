@@ -37,14 +37,15 @@ function tile:Create(x, y, size, color)
     selfy:SetPos(x,y)
     selfy.Size = size
     selfy.Color = color
+    return selfy
 end
 function tile:SetColor(color)
     self.Color = {}
     self.Color = color
     tilesblock[self.ID].Color = color
 end
-tile.BHealth = 250
-tile.Health = 250
+tile.BHealth = 325
+tile.Health = 325
 
 function tile:OnContact(enemy)
     if enemy and enemy.Phys and enemy.Phys.b then
@@ -79,6 +80,7 @@ function tile:AddCollision()
         self:Init()
     end
     if not self.HasCollision then
+        self.World = BASE_MODULE.world
         static = {}
         static.b = love.physics.newBody(BASE_MODULE.world, self.Position["x"],self.Position["y"], "static")
         static.b:setFixedRotation(true)
@@ -137,10 +139,25 @@ function tiles:Think()
     color = Color(2,2,2)
 
     for k,v in pairs(tilesblock) do
-        if v and v.Position then
+        if v and v.Position and (v.World == BASE_MODULE.world or not v.World) then
             size = v.Size or size
-            color = v.Color or color
+            color = Copy(v.Color or color)
             love.graphics.setColor(color.r/255,color.g/255,color.b/255, (color.a or 255)/255)
+            local finded = false
+            if SELECTED_TOOL ~= 0 and type(SELECTED_TOOL) == "table" and v.WeaponOnMe and SELECTED_TOOL.WeaponOnMe then
+                if WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe] then
+                    color.g = color.g * math.abs(math.sin(CurTime()*3))
+                    color.r = color.r * 0.3
+                    color.b = color.b * 0.3
+                    love.graphics.setColor(color.r/255,color.g/255,color.b/255)
+                end
+                local x,y = v.Position.x,v.Position.y
+                local x3,y3 = love.mouse.getPosition()
+                local x2,y2 = v.Size, v.Size
+                if x3 < x + x2 and x3 > x and y3 < y + y2 and y3 > y then
+                    finded = true
+               end
+            end
             if v.Phys then
                 love.graphics.polygon("fill", v.Phys.b:getWorldPoints(
                            v.Phys.s:getPoints()))
@@ -150,8 +167,23 @@ function tiles:Think()
             if v.Think then
                 v:Think()
             end
+            if v.Draw then
+                v:Draw(v.Phys.b:getX(), v.Phys.b:getY())
+            end
             if v.HasCollision then
-                love.graphics.print(v.Health,v.Position['x'] - 33,v.Position['y'] - 44)
+                love.graphics.print(v.Health,v.Position['x'] - size,v.Position['y'] - size/1.5)
+                love.graphics.print(math.ceil((v.NextShoot-CurTime())*100)/100, v.Position['x'] - size,v.Position['y'] - size/2)
+            end
+            if finded then
+                local i = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe]
+                if WEAPONS.FusionsDesc[i] then
+                    local x3,y3 = love.mouse.getPosition()
+                    love.graphics.setColor(0.1,.1,.1)
+                    love.graphics.print( WEAPONS.FusionsDesc[i],x3+1,y3+33)
+                    love.graphics.setColor(1,1,1)
+                    love.graphics.print( WEAPONS.FusionsDesc[i],x3,y3+32)
+                    love.graphics.setColor(color.r/255,color.g/255,color.b/255)
+                end
             end
         end
     end

@@ -2,6 +2,7 @@ BASE_ENEMY = {}
 ENEMIES = {}
 ENEMY = {}
 ENEMY.Size = {x = 48,y = 48}
+ENEMY.NextThing = 0
 require("lua/table_enc")
 BASE_ENEMY.enemiesList = {
     ["Soldier"] = {
@@ -12,6 +13,14 @@ BASE_ENEMY.enemiesList = {
         Size = 32,
         Cost = 1
     },
+    ["Soldier_v2"] = {
+        HP = 20000,
+        MovementSpeed = 85,
+        AttackSpeed = 0.9,
+        Color = Color(255,255,255),
+        Size = 48,
+        Cost = 16
+    },
     ["Tank"] = {
         HP = 3250,
         MovementSpeed = 15,
@@ -21,8 +30,8 @@ BASE_ENEMY.enemiesList = {
         Cost = 5
     },
     ["Tank_v2"] = {
-        HP = 13250,
-        MovementSpeed = 65,
+        HP = 15000,
+        MovementSpeed = 35,
         AttackSpeed = 0.1,
         Color = Color(255,255,255),
         Size = 64,
@@ -81,22 +90,22 @@ BASE_ENEMY.enemiesList = {
         Color = Color(166,14,121),
         Size = 35,
         ProcDMG = function(self, dmg)
-            self.OrigY = math.random(250,1000)
+            self.OrigY = rand(250,1000)
             return dmg
         end,
         Cost = 6
     },
-    ["Dodger"] = {
-        HP = 5000,
-        MovementSpeed = 125,
+    ["Dodger_v2"] = {
+        HP = 25000,
+        MovementSpeed = 185,
         AttackSpeed = 0.01,
         Color = Color(143,192,180),
         Size = 15,
         ProcDMG = function(self, dmg)
-            self.OrigY = math.random(250,1000)
+            self.OrigY = rand(160,1150)
             return dmg
         end,
-        Cost = 25
+        Cost = 100
     },
     ["Doublid"] = {
         HP = 500,
@@ -119,17 +128,20 @@ BASE_ENEMY.enemiesList = {
         Size = 165,
         ProcDMG = function(self, dmg)
             local x,y = self.Phys.b:getX(),self.Phys.b:getY() + math.random(-120,120)
-            DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Crip", x-30,y):SetPos( x-30,y) end, 1)
+            if self.NextThing < CurTime() then
+                self.NextThing = CurTime() + 0.15
+                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Crip", x-30,y):SetPos( x-30,y) end, 1)
+            end
             return dmg
         end,
         Cost = 90
     },
     ["Boss_Dodge"] = {
-        HP = 25000,
-        MovementSpeed = 65,
+        HP = 15000,
+        MovementSpeed = 35,
         AttackSpeed = 0,
         Color = Color(84,99,236),
-        Size = 125,
+        Size = 135,
         ProcDMG = function(self, dmg)
             self.OrigY = math.random(250,1000)
             self.MaxFreezes = 25
@@ -171,7 +183,7 @@ BASE_ENEMY.enemiesList = {
         Color = Color(210,96,19),
         Size = 55,
         ProcDMG = function(self, dmg)
-            dmg.Damage = dmg.Damage * 0.75
+            dmg.Damage = dmg.Damage * 0.33
             self:SetSpeed(self:GetSpeed() + 1)
             return dmg
         end,
@@ -197,6 +209,23 @@ BASE_ENEMY.enemiesList = {
         end,
         Cost = 540,
         Boss = true
+    },
+    ["Boss_Mother"] = {
+        HP = 500000,
+        MovementSpeed = 3,
+        AttackSpeed = 0.01,
+        Color = Color(252,107,209),
+        Size = 265,
+        ProcDMG = function(self, dmg)
+            local x,y = self.Phys.b:getX(),self.Phys.b:getY() + math.random(-66,66)
+            if self.NextThing < CurTime() then
+                self.NextThing = CurTime() + 1.25
+                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Mother", x-30,y):SetPos( x-30,y) end, 1)
+            end
+            dmg.Damage = math.min(dmg.Damage, 1000)
+            return dmg
+        end,
+        Cost = 2000
     },
 
     
@@ -237,6 +266,21 @@ BASE_MODULE["status_burn"] = {
     Debuff = true
 
 }
+BASE_MODULE["status_doomed"] = {
+    Think = function(self, owner)
+        if (self.NextAttack or 0) < CurTime() then
+            owner:TakeDamage(owner:GetMaxHealth()*0.5, "Doom")
+            self.NextAttack = CurTime() + 15
+        end
+    end,
+    PreDraw = function(self, owner, col)
+        love.graphics.print(owner:GetStatus('doomed') and math.ceil((owner:GetStatus('doomed').NextAttack or 0) - CurTime()), pos['x']+ size.x, pos['y'] + size.y)
+        return col
+    end,
+    Debuff = true
+
+}
+
 function ENEMY:GiveStatus(st)
     local sas = BASE_MODULE["status_"..st]
     if sas then
@@ -348,6 +392,7 @@ function ENEMY:Initialize(x,y)
     if tab.OnRemove then
         self.OnRemove = tab.OnRemove
     end
+    self.World = BASE_MODULE.world
     self.OrigY = y
     static = {}
     static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
@@ -385,15 +430,15 @@ function BASE_ENEMY:Think()
     color = Color(2,2,2)
 
     for k,v in pairs(ENEMIES) do
-        if v and v.Position  and not v.Phys.b:isDestroyed()  then
+        if v and v.Position  and not v.Phys.b:isDestroyed() and v.World == BASE_MODULE.world  then
             size = v.Size
             color = Copy(v.Color)
             pos = v.Phys and {x = v.Phys.b:getX(), y = v.Phys.b:getY()} or v.Position
             local statuses = v.GetStatuses and v:GetStatuses()
     
             if v:GetHealth() < v:GetMaxHealth() * 0.15 then
-                color.g = color.g * math.sin(BASE_MODULE["Time"]*10 + v.ID)
-                color.b = color.b * math.sin(BASE_MODULE["Time"]*10 + v.ID)
+                color.g = color.g * math.sin(BASE_MODULE["TimeR"]*10 + v.ID)
+                color.b = color.b * math.sin(BASE_MODULE["TimeR"]*10 + v.ID)
             end
             if statuses then
                 for k2,v2 in pairs(statuses) do

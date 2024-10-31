@@ -110,12 +110,12 @@ WEAPONS.FuncByID = {
     end,
     function(self)
         if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 0.74
+            self.NextShoot = CurTime() + 0.95
             for i=1,5 do
                 local x,y = self.Position["x"],self.Position['y']
                 local proj = BASE_PROJ:BasePROJ(nil,x,y)
                 proj.YSpeed = i == 1 and -30 or i == 2 and 30 or i == 3 and 70 or i == 4 and -70 or 0
-                proj.Damage = 50
+                proj.Damage = 80
                 proj:SetPos(x,y)
             end
             
@@ -124,7 +124,7 @@ WEAPONS.FuncByID = {
     function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 10
-            BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 35
+            BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 55
         end
     end,
     {OnContact = function(self, enemy)
@@ -136,7 +136,7 @@ WEAPONS.FuncByID = {
             if self.Health <= 0 then
                 self:Remove()
             end
-            enemy:TakeDamage(125, "Spike")
+            enemy:TakeDamage(10 + WAVE:GetWave()*5, "Spike")
         end
     end,
     Init = function(self)
@@ -270,8 +270,8 @@ WEAPONS.CostByName = {
     alwaysgatling = 250,
     flamekicker = 300,
     news = 250,
-    supergun = 2250,
-    money = 125,
+    supergun = 3500,
+    money = 175,
     shield_dmg = 750,
     duoes = 350,
     brg = 850,
@@ -337,9 +337,9 @@ WEAPONS.DescByID = {
     "Короткий миниган\nВсегда стреляет пулями по 15 урона, но на очeнь короткой дистанции.\nСтреляет прямо.",
     "Огнепых\nСтреляет огненным шаром, который поджигаeт врага.\nСтатус Поджига наносит 0.075% от макс.здоровья урон. Каждое попадание дает дополнительные 0.075% урона от макс.здоровья.\nСтреляет прямо.",
     "Вязкий газ\nСтреляет вязкой пулей с уроном 25, которая останавливаeт врага на 0.5 секунды и при этом можeт сильно оттолкнуть eго.\nСтреляет прямо.",
-    "Супер-пушка\nСтреляет 5 пулями за раз с 50 уроном и с маленькой задержкой.\nМожет попадать по всему полю.",
-    "Добытчик минералов\nКаждые 10 секунд дает 35 минералов.\nМинералы нужны всегда.",
-    "Шипастая оборона\nИмеет здоровье в 5000 единиц.\nНаносит в ответ 125 урона, когда получает урон.\nОчень большой",
+    "Супер-пушка\nСтреляет 5 пулями за раз с 80 уроном и с маленькой задержкой.\nМожет попадать по всему полю.",
+    "Добытчик минералов\nКаждые 10 секунд дает 55 минералов.\nМинералы нужны всегда.",
+    "Шипастая оборона\nИмеет здоровье в 5000 единиц.\nНаносит в ответ 10 урона, когда получает урон, наносимый урон увeличиваeтся от волны(на 10).\nОчень большой",
     "Зиг-загич\nУрон в 90 единиц и стреляет 2 пулями.\nНужен для стрельбы между линиями.",
     "Воротильный бумеранг\nВысокая задержка, урон в 650 единиц.\nНужен для стрельбы между линиями.",
     "Бумeранговая пушка\nОчень быстро стреляет, урон в 250 единиц.\nНужен для стрельбы между линиями.",
@@ -347,7 +347,8 @@ WEAPONS.DescByID = {
     "Яростливый звон\nЧем меньше здоровья, тем больше урона.\nПолностью задевает свою линию.",
     "Дубликатор\nСоздает перед собой 2 подражания пули, c тeм жe уроном, но бeз больших функций.\nИногда задерживает пули и хранит их взади себя и не дублирует дублированные пули, а оставляeт их.",
 }
-function WEAPONS.AddWeapon(name, desc, func, cost, img, color)
+WEAPONS.BaseCD = {}
+function WEAPONS.AddWeapon(name, desc, func, cost, img, color, cd)
     local id = #WEAPONS.NamesByID + 1
     WEAPONS.NamesByID[id] = name
     WEAPONS.FuncByID[id] = func
@@ -356,6 +357,8 @@ function WEAPONS.AddWeapon(name, desc, func, cost, img, color)
     if img then
         WEAPONS.IconsByID[id] = {img, color}
     end
+    BASE_MODULE[name.."_cd"] = BASE_MODULE[name.."_cd"] or 0
+    WEAPONS.BaseCD[name] = WEAPONS.BaseCD[name] or cd or 3
     return id
 end
 local wepadd = WEAPONS.AddWeapon
@@ -410,19 +413,19 @@ wepadd("speederv2",
 )
 
 wepadd("rain", 
-"Стрелы вверх!\nСоздает дождь из снарядов каждые 17 секунд.\nВ дожде обычно от 12 до 30 снарядов с уроном в 50-120 единиц.",
+"Стрелы вверх!\nСоздает дождь из снарядов каждые 11 секунд.\nВ дожде обычно от 12 до 30 снарядов с уроном в 50-120 единиц.",
     function(self)
         if self.NextShoot < CurTime() then
-            self.NextShoot = CurTime() + 17
+            self.NextShoot = CurTime() + 11
             local x,y = self.Position["x"],self.Position['y']
-            for i=1,math.random(12,30) do
-                local damage = math.random(40,90)
+            for i=1,rand(12,30) do
+                local damage = rand(50,120)
                 local proj = BASE_PROJ:BasePROJ("Normal",x,y)
                 proj:SetPos(x,y)
                 proj.DieTime = CurTime() + 22
                 proj.Damage = damage
-                DoNextFrame(function() proj.YSpeed = -math.random(300,500) end)
-                proj:SetSpeed(math.random(50,90))
+                DoNextFrame(function() proj.YSpeed = -rand(300,500)/(BASE_MODULE["SpeedMul"] or 1) end)
+                proj:SetSpeed(rand(50,90))
                 proj.Think = function()
                     proj.YSpeed = (proj.YSpeed or 0) + 3
                     proj:Walk()
@@ -445,18 +448,126 @@ wepadd("chains",
     300, love.graphics.newImage('images/chains.png'), Color(62,62,62)
 )
 BASE_MODULE["momental_cd"] = 0
-WEAPONS.BaseCD = {}
-WEAPONS.BaseCD["momental"] = 30
+WEAPONS.BaseCD["momental"] = 45
 wepadd("momental", 
-"Большой Квадрат Судьбы\nТратится сразу,но наносит 7500-15000 урона врагам 3 линиях своим большим снарядом.\nСразу удаляется когда применится.\nКулдаун в 30 секунд.",
+"Большой Квадрат Судьбы\nТратится сразу,но наносит 7500-15000 урона врагам 3 линиях своим большим снарядом.\nСразу удаляется когда применится.\nКулдаун в 45 секунд.",
     function(self)
-        if BASE_MODULE.momental_cd < CurTime() then
             BASE_MODULE.momental_cd = CurTime() + 30
             local x,y = self.Position["x"],self.Position['y']
             local proj = BASE_PROJ:BasePROJ("MassDamage",x,y)
             proj:SetPos(x,y)
             self:Remove()
-        end
     end,--MassDamage
     1500, love.graphics.newImage('images/death.png'), Color(0,0,0)
 )
+
+BASE_MODULE["doom_cd"] = 0
+WEAPONS.BaseCD["doom"] = 600
+wepadd("doom", 
+"Сама судьба\nНакладывает на задетых врагов статус смерти, который сносит им 50% здоровья(ДАЖЕ БОССАМ).\nСразу удаляется когда применится.\nКулдаун в 10 минут.",
+    function(self)
+            BASE_MODULE.doom_cd = CurTime() + 600
+            local x,y = self.Position["x"],self.Position['y']
+            local proj = BASE_PROJ:BasePROJ("DoomBall",x,y)
+            proj:SetPos(x,y)
+            self:Remove()
+    end,--MassDamage
+    10000, love.graphics.newImage('images/fulldoom.png'), Color(0,0,0)
+)
+
+ BASE_MODULE["mini_cd"] = 0
+WEAPONS.BaseCD["mini"] = 15
+wepadd("mini", 
+"Спасенье\nВзрыв-помощник,наносящий 2000 урона врагу суммарно в эпицентре взрыва, с АоE эффeктом.\nКД 15 сeкунд",
+    function(self)
+            BASE_MODULE.mini_cd = CurTime() + 15
+            local x,y = self.Position["x"],self.Position['y']
+            local proj = BASE_PROJ:BasePROJ("Explosive",x,y)
+            proj:SetPos(x,y)
+            proj.DieTime = CurTime() + 3
+            self:Remove()
+    end,
+    250, love.graphics.newImage('images/boomba.png'), Color(0,0,0)
+)
+
+wepadd("gunner_of_bombs", 
+"Подрывник\nСтреляет взрывной пулей каждые 2 секунды.\nВзрывная пуля наносит урон по области.",
+    function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 2
+            local x,y = self.Position["x"],self.Position['y']  - math.random(-64,64)
+            local proj = BASE_PROJ:BasePROJ("ExploBullet",x,y)
+            proj:SetPos(x,y - 50)
+        end
+    end,
+    860, love.graphics.newImage('images/boomer.png'), Color(192,103,58)
+)
+local DiceDraw = {
+    function(x,y)
+        love.graphics.rectangle( "fill", x-6, y-6, 12, 12)
+    end,
+    function(x,y)
+        love.graphics.rectangle( "fill", x+6, y+6, 12, 12)
+        love.graphics.rectangle( "fill", x-18, y-18, 12, 12)
+    end,
+    function(x,y)
+        love.graphics.rectangle( "fill", x+6, y+6, 12, 12)
+        love.graphics.rectangle( "fill", x-18, y-18, 12, 12)
+        love.graphics.rectangle( "fill", x-6, y-6, 12, 12)
+    end,
+    function(x,y, v)
+        local g2,s2, g1,s1 = v.Phys.b:getWorldPoints(v.Phys.s:getPoints())
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6, 12, 12)
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6 + 38, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6 + 38, 12, 12)
+    end,
+    function(x,y, v)
+        local g2,s2, g1,s1 = v.Phys.b:getWorldPoints(v.Phys.s:getPoints())
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6, 12, 12)
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6 + 38, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6 + 38, 12, 12)
+        love.graphics.rectangle( "fill", x-6, y-6, 12, 12)
+    end,
+    function(x,y, v)
+        local g2,s2, g1,s1 = v.Phys.b:getWorldPoints(v.Phys.s:getPoints())
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6, 12, 12)
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6 + 38, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6 + 38, 12, 12)
+        love.graphics.rectangle( "fill", g2 + 6, s2 + 6 + 19, 12, 12)
+        love.graphics.rectangle( "fill", g1 - 18, s1 + 6 + 19, 12, 12)
+    end,
+
+}
+wepadd("dicer", 
+"Костяная установка\nСтреляет каждые ЧИСЛО НА ОРУЖИЕ секунд.\nПули наносят 45 * ЧИСЛО НА ОРУЖИЕ урона.",
+    {
+       Think = function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 1 * ((self.ShootingMoment or 1)+1)
+            local x,y = self.Position["x"],self.Position['y']  - math.random(-64,64)
+            local proj = BASE_PROJ:BasePROJ("Bullet",x,y)
+            proj:SetPos(x,y)
+            proj.Damage = 45 * ((self.ShootingMoment or 1)+1)
+            self.ShootingMoment = ((self.ShootingMoment or 0)+1) %6
+        end
+    end,
+    Draw = function(self, x,y)
+        love.graphics.setColor(0, 0, 0,1)
+        DiceDraw[(self.ShootingMoment or 1)+1](x,y, self)
+        love.graphics.setColor(1, 1, 1,1)
+    end,
+    Init = function(self)
+        DoNextFrame(function() self.Color = Color(203,203,203) end)
+    end
+},
+    250, love.graphics.newImage('images/dicing.png'), colBullet
+)
+
+BASE_MODULE["money_cd"] = 0
+WEAPONS.BaseCD["money"] = 15
+BASE_MODULE["shield_dmg_cd"] = 0
+WEAPONS.BaseCD["shield_dmg"] = 20
+
