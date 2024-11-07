@@ -1,10 +1,12 @@
 WAVE = {}
 WAVE.NextWave = 0
 WAVE.EnemyOnWave = 0
+WAVE.Locations = {["Flatland"] = {}}
+WAVE.AddMoneyLoc = {["Flatland"] = {}}
 function WAVE:GetWave()
     return BASE_MODULE["WaveNow"] 
 end
-local function Count(g)
+function Count(g)
     local a = 0
     for k,v in pairs(g) do
         if v then
@@ -14,7 +16,8 @@ local function Count(g)
     return a
 end
 local waveHolder = {"Tank_v2", "Fireman", "Runner","Dodger_v2", "Destroyer", "Powerupper", "Rusher", "Doublid", "Soldier_v2"}
-local wavesD = {
+
+WAVE.Locations["Flatland"] = {
     {"Soldier", "Crip"},
     {"Soldier", "Runner"},
     {"Bullet", "Runner", "Dodger"},
@@ -55,14 +58,14 @@ local wavesD = {
     {"Dodger_v2", "Soldier_v2"}, -- 38
     {"Dodger_v2", "Soldier_v2"}, -- 39
 }
-local addWaveMoneys = {
+WAVE.AddMoneyLoc["Flatland"] = {
     3,
     1,
     [35] = -1250,
     [39] = 250,
 }
-addWaveMoneys[50] = 1250
-wavesD[75] = {"Boss_Mother"}
+WAVE.AddMoneyLoc["Flatland"][50] = 1250
+WAVE.Locations["Flatland"][75] = {"Boss_Mother"}
 function WAVE:Start()
     BASE_MODULE.ActiveMode = true
     local ene = Count(ENEMIES)
@@ -70,12 +73,12 @@ function WAVE:Start()
         BASE_MODULE["WaveNow"] = BASE_MODULE["WaveNow"] + 1
         self.NextWave = CurTime() + 25 + self:GetWave()*5
         BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] + 175 + self:GetWave()*35
-        local cost = math.ceil(rand(1, self:GetWave()*4) + 4 + self:GetWave()^1.35 + (addWaveMoneys[BASE_MODULE["WaveNow"]] or 0))
+        local cost = math.ceil(rand(1, self:GetWave()*4) + 4 + self:GetWave()^1.35 + (WAVE.AddMoneyLoc[BASE_MODULE.Location or "Flatland"][BASE_MODULE["WaveNow"]] or 0))
         if self:GetWave() < 4 then
             cost = cost/3
         end
         local list2 = BASE_ENEMY.enemiesList
-        local pick = wavesD[self:GetWave()]
+        local pick = WAVE.Locations[BASE_MODULE.Location or "Flatland"] and WAVE.Locations[BASE_MODULE.Location or "Flatland"][self:GetWave()]
         local zero = 0
         while cost > 0 do
             local name = pick and pick[rand(1,#pick)] or waveHolder[rand(1,#waveHolder)]

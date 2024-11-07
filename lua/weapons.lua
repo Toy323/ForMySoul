@@ -114,7 +114,7 @@ WEAPONS.FuncByID = {
             for i=1,5 do
                 local x,y = self.Position["x"],self.Position['y']
                 local proj = BASE_PROJ:BasePROJ(nil,x,y)
-                proj.YSpeed = i == 1 and -30 or i == 2 and 30 or i == 3 and 70 or i == 4 and -70 or 0
+                proj.YSpeed = -90 + 30*i
                 proj.Damage = 80
                 proj:SetPos(x,y)
             end
@@ -475,7 +475,7 @@ wepadd("doom",
     10000, love.graphics.newImage('images/fulldoom.png'), Color(0,0,0)
 )
 
- BASE_MODULE["mini_cd"] = 0
+BASE_MODULE["mini_cd"] = 0
 WEAPONS.BaseCD["mini"] = 15
 wepadd("mini", 
 "Спасенье\nВзрыв-помощник,наносящий 2000 урона врагу суммарно в эпицентре взрыва, с АоE эффeктом.\nКД 15 сeкунд",
@@ -491,7 +491,7 @@ wepadd("mini",
 )
 
 wepadd("gunner_of_bombs", 
-"Подрывник\nСтреляет взрывной пулей каждые 2 секунды.\nВзрывная пуля наносит урон по области.",
+"Подрывник\nСтреляет взрывной пулей каждые 2 секунды.\nВзрывная пуля наносит урон по области.\nСтреляет случайно по всeй линии.",
     function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 2
@@ -542,12 +542,16 @@ local DiceDraw = {
 
 }
 wepadd("dicer", 
-"Костяная установка\nСтреляет каждые ЧИСЛО НА ОРУЖИЕ секунд.\nПули наносят 45 * ЧИСЛО НА ОРУЖИЕ урона.",
+"Костяная установка\nСтреляет каждые ЧИСЛО НА ОРУЖИЕ секунд.\nПули наносят 45 * ЧИСЛО НА ОРУЖИЕ урона.\nСтреляет по случайному врагу на линии.",
     {
        Think = function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 1 * ((self.ShootingMoment or 1)+1)
             local x,y = self.Position["x"],self.Position['y']  - math.random(-64,64)
+            local gr = self:FindTarget(125, nil, 125)
+            if gr then
+                y = gr.Phys.b:getY() - gr.Size["y"]/2
+            end
             local proj = BASE_PROJ:BasePROJ("Bullet",x,y)
             proj:SetPos(x,y)
             proj.Damage = 45 * ((self.ShootingMoment or 1)+1)
@@ -570,4 +574,124 @@ BASE_MODULE["money_cd"] = 0
 WEAPONS.BaseCD["money"] = 15
 BASE_MODULE["shield_dmg_cd"] = 0
 WEAPONS.BaseCD["shield_dmg"] = 20
+
+function math.Approach( cur, target, inc )
+	if ( cur < target ) then
+		return math.min( cur + math.abs( inc ), target )
+	end
+
+	if ( cur > target ) then
+		return math.max( cur - math.abs( inc ), target )
+	end
+
+	return target
+end
+function math.Round( num, idp )
+	local mult = 10 ^ ( idp or 0 )
+	return math.floor( num * mult + 0.5 ) / mult
+end
+
+wepadd("buckshot_auto", 
+"Авто-дробовик\nСтреляет по 3 врагам на линии.\nДробь очень эффективна вблизи и на гигантских врагах.\nПлохо замечает противников, которые меньше солдата.",
+    { Think = function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 3.6
+            local x,y = self.Position["x"] + 45,self.Position['y'] 
+            local gr = self:FindTargets(250, -33, 250)
+            
+            for i=1,3 do
+                if gr[i] then
+                    y = math.Clamp(gr[i].Phys.b:getY() - gr[i].Size["y"]/2, y-77, y+77)
+                else
+                    y = y - math.random(-64,64)
+                end
+                self["YPosFor"..i] = y
+                self["XPosFor"..i] = x
+            end
+        end
+        if self.AllCursorsOnPos then
+            for i2=1,3 do
+                local x = self["XPosFor"..i2] 
+                local y = self["YPosFor"..i2] 
+                for i=1,7 do
+                    local proj = BASE_PROJ:BasePROJ("Bullet",x,y)
+                    proj:SetPos(x,y)
+                    proj:SetSpeed(rand(300,400))
+                    proj.YSpeed = rand(-11,11)
+                    proj.Damage = 22
+                end
+            end
+            self.AllCursorsOnPos = false
+        end
+    end,
+    Draw = function(self, x, y)
+        love.graphics.setColor(0, 0, 0,1)
+        for i=1,3 do
+            if not self["YOldPos"..i] then
+                self["YOldPos"..i] = self["YPosFor"..i] or y
+            end
+            local f,g = (self["XPosFor"..i] or x) - 10, self["YOldPos"..i] or y or 0
+            if math.Round(g) ~= math.Round(self["YPosFor"..i] or 0) then
+                self["YOldPos"..i] = math.Approach(self["YOldPos"..i], self["YPosFor"..i] or y, math.abs((self["YPosFor"..i] or 55) - self["YOldPos"..i])/7 * BASE_MODULE["SpeedMul"] )           
+            else
+                if (self.NextCurs or 0) < CurTime() then
+                    self.AllCursorsOnPos = true  
+                    self.NextCurs = CurTime() + 2.9
+                end              
+            end
+            love.graphics.polygon( 'line', f, g+10, f, g-10, f+20, g )
+        end
+        love.graphics.setColor(1, 1, 1,1)
+    end},
+    625, love.graphics.newImage('images/buckshot_auto.png'), colBullet
+)
+
+
+
+wepadd("automat", 
+"Авто-пушка\nСтреляет по 1 врагу на одной из 3-х линий.\nСтреляет достаточно быстро и плохо видит маленьких врагов.",
+    { Think = function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 0.6
+            local x,y = self.Position["x"] + 45,self.Position['y'] 
+            local gr = self:FindTarget(122, -15, 66)
+            
+                if gr then
+                    y = math.Clamp(gr.Phys.b:getY() - gr.Size["y"]/2, y-77, y+77)
+                else
+                    y = y - math.random(-64,64)
+                end
+                self["YPosFor"] = y
+                self["XPosFor"] = x
+        end
+        if self.AllCursorsOnPos then
+                local x = self["XPosFor"] 
+                local y = self["YPosFor"] 
+                local proj = BASE_PROJ:BasePROJ("Bullet",x,y)
+                proj:SetPos(x,y)
+                proj:SetSpeed(rand(700,800))
+                proj.Damage = 34
+            self.AllCursorsOnPos = false
+        end
+    end,
+    Draw = function(self, x, y)
+        love.graphics.setColor(0, 0, 0,1)
+            if not self["YOldPos"] then
+                self["YOldPos"] = self["YPosFor"] or y
+            end
+            local f,g = (self["XPosFor"] or x) - 10, self["YOldPos"] or y or 0
+            if math.Round(g) ~= math.Round(self["YPosFor"] or 0) then
+                self["YOldPos"] = math.Approach(self["YOldPos"], self["YPosFor"] or y, math.abs((self["YPosFor"] or 55) - self["YOldPos"])/7 * BASE_MODULE["SpeedMul"] )           
+            else
+                if (self.NextCurs or 0) < CurTime() then
+                    self.AllCursorsOnPos = true  
+                    self.NextCurs = CurTime() + 0.3
+                end              
+            end
+            love.graphics.polygon( 'line', f, g+10, f, g-10, f+20, g )
+        love.graphics.setColor(1, 1, 1,1)
+    end},
+    325, love.graphics.newImage('images/autmat.png'), colBullet
+)
+
 

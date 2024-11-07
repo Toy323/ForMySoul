@@ -1,6 +1,6 @@
 BASE_MODULE = {}
 BASE_MODULE.Time = 0
-BASE_MODULE.Version = "0.2.3.3"
+BASE_MODULE.Version = "0.3.3.3"
 BASE_MODULE.WaveNow = 0
 BASE_MODULE["TimeR"] = 0
 SUBMODULE_INPUT = {}
@@ -12,10 +12,19 @@ function print_t(...)
         print(k, v)
     end
 end
+function Scale()
+    local x,y = love.graphics.getDimensions()
+    return x/1920,y/1080 
+end
 function Color(r,g,b,a)
-    
     return {['r'] = math.min(255,r),['g'] = math.min(255,g),['b'] = math.min(255,b),['a'] = a}
 end
+
+
+function math.Clamp( _in, low, high )
+	return math.min( math.max( _in, low ), high )
+end--ХУЛE EE ТУТ НEТУ?????
+
 require('lua/table_enc')
 require('lua/middleclass')
 require('lua/tilemap')
@@ -108,6 +117,9 @@ end
 function RealTime()
     return BASE_MODULE["TimeR"]
 end
+function DevMode()
+    return not love.filesystem.isFused()
+end
 local nextframes = {}
 local nextframes2 = {}
 function DoNextFrame(func)
@@ -120,17 +132,19 @@ end
 local ready = love.graphics.newImage('images/ready.png')
 local del = love.graphics.newImage('images/del.png')
 
+local almanax = love.graphics.newImage('images/ab_enemy.png')
+
 local imgx1 = love.graphics.newImage('images/double_by_1.png')
 local imgx2 = love.graphics.newImage('images/double_by_2.png')
 local imgx4 = love.graphics.newImage('images/double_by_4.png')
 
 BASE_MODULE["SpeedMul"] = 1
-local baseMoney = 1000
+local baseMoney = DevMode() and 250000 or 1000
 BASE_MODULE["MoneyNow"] = baseMoney
 BASE_MODULE.HealthNow = 10000
 function GetM()
     return BASE_MODULE.MoneyNow
-end
+end 
 function ClearAll()
     for k,v in pairs(cache) do
         if v then
@@ -165,6 +179,7 @@ function rand(min,max)
 end
 gameloaded = false
 function loadGame()
+    local scale = Scale()
 	rng = love.math.newRandomGenerator()
 	rng:setSeed(os.time())
     BASE_MODULE.rng = rng
@@ -200,7 +215,7 @@ function loadGame()
     local button = BUTTON.AddButton(1,oldx,oldy,Color(220,128,79),1,1, bim)
     local oldid = button.ID
 
-        
+    BASE_MODULE.LoseSystem = button
     
     button.OnClickDo = function(x,y)
         BASE_MODULE["MoneyNow"] = baseMoney
@@ -216,8 +231,8 @@ function loadGame()
     
     button.Think = function()
         if SELECTED_TOOL == button then
-            button.Position.x = love.mouse.getX() - 32
-            button.Position.y =  love.mouse.getY() - 32
+            button.Position.x = love.mouse.getX() - 32 * scale
+            button.Position.y =  love.mouse.getY() - 32 * scale
         else
             button.Position.x = oldx
             button.Position.y =  oldy
@@ -235,7 +250,7 @@ function loadGame()
         else
             SELECTED_TOOL = 0
             for k,v in pairs(tilesblock) do
-                if x < v.Position.x + (v.Size or 2)*1.5  and x > v.Position.x and y < v.Position.y + (v.Size or 2)*1.5 and y > v.Position.y then
+                if x < v.Position.x* scale + (v.Size or 2)*1.5* scale  and x > v.Position.x* scale and y < v.Position.y* scale + (v.Size or 2)*1.5* scale and y > v.Position.y* scale then
                     if v.HasCollision then
                         v:Remove()
                         break 
@@ -247,8 +262,8 @@ function loadGame()
     
     button.Think = function()
         if SELECTED_TOOL == button then
-            button.Position.x = love.mouse.getX() - 32
-            button.Position.y =  love.mouse.getY() - 32
+            button.Position.x = love.mouse.getX() - 32 * scale
+            button.Position.y =  love.mouse.getY() - 32 * scale
         else
             button.Position.x = oldx
             button.Position.y =  oldy
@@ -295,9 +310,9 @@ function loadGame()
                                     if BASE_MODULE["MoneyNow"] < WEAPONS.CostByName[WEAPONS.NamesByID[i]] or BASE_MODULE[WEAPONS.NamesByID[i].."_cd"] and BASE_MODULE[WEAPONS.NamesByID[i].."_cd"] > CurTime() then
                                         break
                                     end
-                                    if WEAPONS.IDFusion[v.WeaponOnMe.."plus"..gal.WeaponOnMe] or WEAPONS.IDFusion[gal.WeaponOnMe.."plus"..v.WeaponOnMe] then
-                                        local id = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..gal.WeaponOnMe] or WEAPONS.IDFusion[gal.WeaponOnMe.."plus"..v.WeaponOnMe]
-                                        local synergy = v.WeaponOnMe.."plus"..gal.WeaponOnMe
+                                    local id = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..gal.WeaponOnMe] or WEAPONS.IDFusion[gal.WeaponOnMe.."plus"..v.WeaponOnMe] or WEAPONS.IDFusion[v.IDOfWeapon.."plus"..gal.WeaponOnMe] or WEAPONS.IDFusion[gal.WeaponOnMe.."plus"..v.IDOfWeapon]
+                                    if id then
+                                        local synergy = WEAPONS.RevertID[id]
                                         local g = tile:Create(v.Position.x,v.Position.y,125/2,Color(156,215,96))
                                         DoNextFrame(function() g:SetColor(WEAPONS.ColorOfFus[id]) end)
 
@@ -380,11 +395,11 @@ function loadGame()
                 end
                 gal.Think = function()
                     if SELECTED_TOOL == gal then
-                        gal.Position.x = love.mouse.getX() - 32
-                        gal.Position.y =  love.mouse.getY() - 32
+                        gal.Position.x = love.mouse.getX() - 32 * scale
+                        gal.Position.y =  love.mouse.getY() - 32 * scale
                     else
-                        gal.Position.x = 64*2 + 64 * g
-                        gal.Position.y = 66
+                        gal.Position.x = (64*2 + 64 * g) * scale
+                        gal.Position.y = 66 * scale
                     end
                 end
                 gal.OnSeen = function(x,y)
@@ -400,11 +415,11 @@ function loadGame()
         button.Think = function()
             if button.NOPICK then return end
             if SELECTED_TOOL == button then
-                button.Position.x = love.mouse.getX() - 32
-                button.Position.y =  love.mouse.getY() - 32
+                button.Position.x = love.mouse.getX() - 32 * scale
+                button.Position.y =  love.mouse.getY() - 32 * scale
             else
-                button.Position.x = 120 + 64 * ((i-1)%9)
-                button.Position.y = 120 + 86 * math.ceil(i/9)
+                button.Position.x = (120 + 64 * ((i-1)%9)) * scale
+                button.Position.y = (120 + 86 * math.ceil(i/9)) * scale
             end
         end
         button.OnSeen = function(x,y)
@@ -425,34 +440,84 @@ function loadGame()
     BASE_MODULE.world:setCallbacks(beginContact, endContact, preSolve, postSolve)
     gameloaded = true
 end
+local back = love.graphics.newImage('images/back.png')
+local forward = love.graphics.newImage('images/forward.png')
+local cache2 = {}
+function loadAlmanax()
+    local x2,y2 = love.graphics.getDimensions()
+    local button = BUTTON.AddButton(1,x2/12 - 64/2,y2/1.2 - 64/2,Color(90,0,0),1,1, back)
+
+    button.OnClickDo = function()
+        BUTTON.RemoveButton(button.ID)
+        remCache2()
+        loadMenu()
+    end
+    local enemies = BASE_ENEMY.enemiesList
+    local es = {}
+    local i = 0
+    for k,v in pairs(enemies) do
+        es[i] = v 
+        i = i + 1
+    end
+    local v = es[0]
+    local size = v.Size
+    local g = BUTTON.AddButton(size, x2/3,y2/3, v.Color)
+    g.ID2 = 0
+    g.Aaa = es[0]
+    g["txt"] = "Здоровья:"..g.Aaa.HP.."\nСкорость:"..g.Aaa.MovementSpeed
+    g["xt"] = -55
+    g["yt"] = -55
+    g["colt"] = Color(182,182,182)
+    cache2[#cache2 + 1] = g.ID
+    g.OnClickDo = function()
+        g.Aaa = es[(g.ID2 + 1) % Count(es)]
+        g.ID2 = g.ID2 + 1
+        g.Color = g.Aaa.Color
+        g.Size = {x = g.Aaa.Size, y = g.Aaa.Size}
+
+        g["txt"] = "Здоровья:"..g.Aaa.HP.."\nСкорость:"..g.Aaa.MovementSpeed
+        g["xt"] =  -55
+        g["yt"] = -55
+        g["colt"] = Color(182,182,182)
+    end
+    g.OnSeen = function(x,y)
+        if g.Aaa then
+            love.graphics.setColor(0.1,.1,.1)
+            love.graphics.print(g.Aaa.Desc,x+1,y+33)
+            love.graphics.setColor(1,1,1)
+            love.graphics.print(g.Aaa.Desc,x,y+32)
+        end
+    end
+end
+function remCache2()
+    for k,v in pairs(cache2) do
+        BUTTON.RemoveButton(v)
+    end
+    cache2 = {}
+end
+BASE_MODULE.Location = "Flatland"
+function loadMenu(arguments)
+    local x2,y2 = love.graphics.getDimensions()
+    local button = BUTTON.AddButton(1,x2/2- 256/2,y2/2 - 256/2,Color(0,90,15),1,1, resume2)
+    local budid = button.ID
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        remCache2()
+        loadGame()
+        BASE_MODULE.Location = BASE_MODULE.SelLoc or "Flatland"
+    end
+    local button = BUTTON.AddButton(1,x2/3- 256/2,y2/2 - 256/2,Color(90,78,0),1,1, almanax)
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        remCache2()
+        loadAlmanax()
+    end
+end
 function love.load()
     print(love.window.getFullscreen())
     love.window.setFullscreen(true)
     love.window.setTitle("Doset Vs Dosei v"..BASE_MODULE.Version)
-    local x2,y2 = love.graphics.getDimensions()
-    local button = BUTTON.AddButton(1,x2/2- 256/2,y2/2 - 256/2,Color(0,90,15),1,1, resume2)
-    button.OnClickDo = function()
-        loadGame()
-        DoNextFrame(function() BUTTON.RemoveButton(button.ID) end)
-    end
-   --[[ 
-
-    ball = {}
-    ball.b = love.physics.newBody(world, 400,200, "dynamic")  -- set x,y position (400,200) and let it move and hit other objects ("dynamic")
-    ball.b:setMass(-0.05)                                        -- make it pretty light
-    ball.s = love.physics.newCircleShape(50)                  -- give it a radius of 50
-    ball.f = love.physics.newFixture(ball.b, ball.s)          -- connect body to shape
-    ball.f:setRestitution(1)                                -- make it bouncy
-    ball.f:setUserData("Ball")                                -- give it a name, which we'll access later
-
-
-    static = {}
-    static.b = love.physics.newBody(world, 400,400, "static") -- "static" makes it not move
-    static.s = love.physics.newRectangleShape(200,50)         -- set size to 200,50 (x,y)
-    static.f = love.physics.newFixture(static.b, static.s)
-    static.f:setUserData("Block")]] -- Для будущего
-    --tiles
-    --tiles:CreateMapLineDown(1,1,30,2)
+    loadMenu()
 
 end
 BASE_MODULE.OnPause = false
@@ -486,17 +551,18 @@ function love.keypressed(button, code, isrepeat)
 end
 function love.mousepressed( x, y, button, istouch, presses )
     SUBMODULE_INPUT.CreatePhantomText(BASE_MODULE["LastTextInput"] or 1,x,y)
+    local scale = Scale()
    -- print(x,y)
    local x2,y2 = 0,0
     for k,button in pairs(BUTTONS_SUB) do
         local size = button.Size
         local img = button.img 
-        x2,y2 = size['x'], size['y']
+        x2,y2 = size['x'] * scale, size['y'] * scale
         if img then
-            x2 = x2 + img:getWidth()
-            y2 = y2 + img:getHeight()
+            x2 = x2 + img:getWidth() * scale
+            y2 = y2 + img:getHeight() * scale
         end
-       if x < button.Position.x + x2 and x > button.Position.x and y < button.Position.y + y2 and y > button.Position.y then
+       if x < button.Position.x * scale + x2 and x > button.Position.x * scale and y < button.Position.y * scale + y2 and y > button.Position.y * scale then
             if button.OnClickDo then
                 button.OnClickDo(love.mouse.getX(),love.mouse.getY())
             end
@@ -505,13 +571,13 @@ function love.mousepressed( x, y, button, istouch, presses )
 end
 function love.draw()
     love.graphics.setBackgroundColor(0.02,0.25,0)
-
+    local scale = Scale()
     if gameloaded then
-        love.graphics.print("Wave "..WAVE:GetWave(),128,128)
+        love.graphics.print("Wave "..WAVE:GetWave(),128 * scale,128 * scale)
 
-        love.graphics.print("Minerals Now "..GetM(),32,32)
+        love.graphics.print("Minerals Now "..GetM(),32 * scale,32 * scale)
 
-        love.graphics.print("HP: "..BASE_MODULE.HealthNow,32,64)
+        love.graphics.print("HP: "..BASE_MODULE.HealthNow,32 * scale,64 * scale)
     end
 
     SUBMODULE_DRAW.Think()
@@ -524,6 +590,7 @@ function SUBMODULE_DRAW.Think()
     local lastinput = BASE_MODULE["LastTextInput"] 
     local time = BASE_MODULE["Time"]
     local x,y = mouse.getPosition()
+    local scale = Scale()
 --    love.graphics.circle("fill",(x or 32),(y or 32),41*math.abs(math.cos(time/math.pi*0.5)))
     if (SUBMODULE_INPUT.NextUse or 0) < time and lastinput and love.keyboard.isDown(lastinput) then
         SUBMODULE_INPUT.CreatePhantomText(lastinput or 1)
@@ -545,25 +612,30 @@ function SUBMODULE_DRAW.Think()
     end
     nextframes = {}
 
-
+    local clear = true
     for k,v in pairs(nextframes2) do
         if v[2] > 1 then
-            v[2] = v[2] - 1
+            v[2] = v[2] - 1  * BASE_MODULE["SpeedMul"]
+            clear = false
         else
             v[1]()
+            v[1] = function()
+            end
         end
     end
-    nextframes2 = {}
+    if clear then
+        nextframes2 = {}
+    end
     local x2,y2 = 0,0
     for k,button in pairs(BUTTONS_SUB) do
         local size = button.Size
         local img = button.img 
-        x2,y2 = size['x'], size['y']
+        x2,y2 = size['x'] * scale, size['y'] * scale
         if img then
-            x2 = x2 + img:getWidth()
-            y2 = y2 + img:getHeight()
+            x2 = x2 + img:getWidth() * scale
+            y2 = y2 + img:getHeight() * scale
         end
-       if x < button.Position.x + x2 and x > button.Position.x and y < button.Position.y + y2 and y > button.Position.y then
+       if x < button.Position.x * scale + x2 and x > button.Position.x * scale and y < button.Position.y * scale + y2 and y > button.Position.y * scale then
             if button.OnSeen then
                 button.OnSeen(love.mouse.getX(),love.mouse.getY())
             end
@@ -626,13 +698,14 @@ local fuse = WEAPONS.IDFusion
 function BUTTON.ThinkButtons()
     size = {1,1}
     color = Color(2,2,2)
+    local scale = Scale()
 
     for k,v in pairs(BUTTONS_SUB) do
   --      print_t(v)
         if v and v.Position then
             size = v.Size
             color = Copy(v.Color)
-            local x,y = v.Position['x'], v.Position['y']
+            local x,y = v.Position['x'] * scale, v.Position['y'] * scale
             love.graphics.setColor(color.r/255,color.g/255,color.b/255)
             if v.img then
                 love.graphics.draw( v.img, x, y, 0, size.x, size.y)

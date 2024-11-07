@@ -36,9 +36,6 @@ BASE_PROJ.projectilesList = {
         OnContact = function(self, enemy)
             self.Phys.f:setCategory(4)
             enemy.Phys.f:setMask(4)
-            DoNextFramePlus(function()
-               if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
-            end, 4500)
             enemy:TakeDamage(self.Damage or 30, self.DMGType)
         end
     },
@@ -51,9 +48,6 @@ BASE_PROJ.projectilesList = {
         OnContact = function(self, enemy)
             self.Phys.f:setCategory(6)
             enemy.Phys.f:setMask(6)
-            DoNextFramePlus(function()
-               if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
-            end, 300)
             enemy:TakeDamage(self.Damage or 30, self.DMGType)
         end,
         Think = function(self)
@@ -86,6 +80,59 @@ BASE_PROJ.projectilesList = {
                     proj:SetPos(x,y)
                     proj.MaxY = 150
                     proj.Damage = 25
+                    proj.DieTime = CurTime() + 3
+                end)
+            end
+            self:Remove()
+        end
+    },
+
+
+
+
+    ["ExplosiveFire"] = {
+        Damage = 300,
+        FlySpeed = 0,
+        Color = Color(138,97,46),
+        Size = 12,
+        DMGType = "Fire",
+        OnContact = function(self, enemy)
+            self.Phys.f:setCategory(6)
+            enemy.Phys.f:setMask(6)
+            local burn = enemy:GiveStatus('burn')
+            burn.Stacks = (burn.Stacks or 0) + 1
+            enemy:TakeDamage(self.Damage or 30, self.DMGType)
+        end,
+        Think = function(self)
+            if BASE_MODULE.OnPause then return end
+            self.Size.x = self.Size.x * 1.13
+            self.Size.y = self.Size.y * 1.13
+            local static = self.Phys
+            static.s = love.physics.newRectangleShape(self.Size.x,self.Size.y)       
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-48)
+            static.f:setUserData(tostring(self.ID))
+            static.f:setRestitution(0.1) 
+            self.Phys = static
+            if self.Size.y > (self.MaxY or 560) then
+                self:Remove()
+            end
+        end
+    },
+    ["ExploBulletF"] = {
+        Damage = 25,
+        FlySpeed = 550,
+        Color = Color(176,73,0),
+        Size = 44,
+        OnContact = function(self, enemy)
+            enemy:TakeDamage(self.Damage or 30, "Fire")
+            if self.Phys.b then
+                local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                DoNextFrame(function()
+                    local proj = BASE_PROJ:BasePROJ("ExplosiveFire",x,y)
+                    proj:SetPos(x,y)
+                    proj.MaxY = 140
+                    proj.Damage = 33
                     proj.DieTime = CurTime() + 3
                 end)
             end
@@ -210,9 +257,6 @@ BASE_PROJ.projectilesList = {
         OnContact = function(self, enemy)
             self.Phys.f:setCategory(5)
             enemy.Phys.f:setMask(5)
-            DoNextFramePlus(function()
-               if enemy and enemy.Phys and not enemy.Phys.f:isDestroyed() then enemy.Phys.f:setMask(nil) end
-            end, 10000)
             local burn = enemy:GiveStatus('doomed')
         end
     },

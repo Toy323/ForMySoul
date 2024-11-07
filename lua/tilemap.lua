@@ -11,6 +11,34 @@ function tile:BaseTile()
     tilesblock[base.ID] = base
     return base
 end
+local function sort(a,b)
+    return a.Phys and a.Phys.b:getX() < ( b.Phys and b.Phys.b:getX())
+end
+function tile:FindTarget(size,l, down) -- l - Длина
+    size = size or 1
+    local x,y = self.Position.x, self.Position.y - (down or 0)
+    local enemies = {}
+    for k,v in pairs(ENEMIES) do
+        local phys = v and v.Phys.b
+        if phys and phys:getY()-v.Size.y/2 < y + (size + self.Size) and phys:getY()-v.Size["y"]/2 > y and phys:getX() >  (x+(l or 0)) then
+            enemies[#enemies + 1] = v
+        end
+    end
+    table.sort(enemies, sort)
+    return enemies[#enemies]
+end
+function tile:FindTargets(size,l, down)
+    size = size or 1
+    local x,y = self.Position.x, self.Position.y - (down or 0)
+    local enemies = {}
+    for k,v in pairs(ENEMIES) do
+        local phys = v and v.Phys.b
+        if phys and phys:getY()-v.Size.y/2 < y + (size + self.Size) and phys:getY()-v.Size["y"]/2 > y and phys:getX() >  (x+(l or 0))  then
+            enemies[#enemies + 1] = v
+        end
+    end
+    return enemies
+end
 function tile:Remove()
     if self.Phys then
         self.Phys.b:destroy()
@@ -31,6 +59,13 @@ function tile:SetPos(x, y)
     self.Position = {}
     self.Position["x"] = x
     self.Position["y"] = y
+end
+
+function tile:GetPos()
+    if self.HasCollision then
+        return self.Phys.b:getX(),self.Phys.b:getY()
+    end
+    return  self.Position.x, self.Position.y
 end
 function tile:Create(x, y, size, color)
     local selfy = tile:BaseTile()
@@ -145,8 +180,8 @@ function tiles:Think()
             love.graphics.setColor(color.r/255,color.g/255,color.b/255, (color.a or 255)/255)
             local finded = false
             if SELECTED_TOOL ~= 0 and type(SELECTED_TOOL) == "table" and v.WeaponOnMe and SELECTED_TOOL.WeaponOnMe then
-                if WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe] then
-                    color.g = color.g * math.abs(math.sin(CurTime()*3))
+                if WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe] or WEAPONS.IDFusion[v.IDOfWeapon.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.IDOfWeapon] then
+                    color.g = color.g * math.abs(math.sin(RealTime()*3))
                     color.r = color.r * 0.3
                     color.b = color.b * 0.3
                     love.graphics.setColor(color.r/255,color.g/255,color.b/255)
@@ -175,7 +210,7 @@ function tiles:Think()
                 love.graphics.print(math.ceil((v.NextShoot-CurTime())*100)/100, v.Position['x'] - size,v.Position['y'] - size/2)
             end
             if finded then
-                local i = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe]
+                local i = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe] or WEAPONS.IDFusion[v.IDOfWeapon.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.IDOfWeapon]
                 if WEAPONS.FusionsDesc[i] then
                     local x3,y3 = love.mouse.getPosition()
                     love.graphics.setColor(0.1,.1,.1)
