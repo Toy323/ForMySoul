@@ -66,6 +66,22 @@ BASE_PROJ.projectilesList = {
             end
         end
     },
+    ["Laser"] = {
+        Damage = 222,
+        FlySpeed = 0,
+        Color = Color(39,203,192),
+        Size = 155,
+        DMGType = "Laser",
+        OnContact = function(self, enemy)
+            enemy:TakeDamage(self.Damage or 30, self.DMGType)
+        end,
+        Init = function(self)
+            self.Size.x = 5000
+            DoNextFrame(function()
+                self.DieTime = CurTime()  + 0.6
+            end)
+        end,
+    },
     ["ExploBullet"] = {
         Damage = 25,
         FlySpeed = 550,

@@ -575,17 +575,6 @@ WEAPONS.BaseCD["money"] = 15
 BASE_MODULE["shield_dmg_cd"] = 0
 WEAPONS.BaseCD["shield_dmg"] = 20
 
-function math.Approach( cur, target, inc )
-	if ( cur < target ) then
-		return math.min( cur + math.abs( inc ), target )
-	end
-
-	if ( cur > target ) then
-		return math.max( cur - math.abs( inc ), target )
-	end
-
-	return target
-end
 function math.Round( num, idp )
 	local mult = 10 ^ ( idp or 0 )
 	return math.floor( num * mult + 0.5 ) / mult
@@ -649,7 +638,7 @@ wepadd("buckshot_auto",
 
 
 wepadd("automat", 
-"Авто-пушка\nСтреляет по 1 врагу на одной из 3-х линий.\nСтреляет достаточно быстро и плохо видит маленьких врагов.",
+"Авто-пушка\nСлучайно выбирает цель и стреляет по ней.\nСтреляет достаточно быстро и плохо видит маленьких врагов.",
     { Think = function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 0.6
@@ -692,6 +681,55 @@ wepadd("automat",
         love.graphics.setColor(1, 1, 1,1)
     end},
     325, love.graphics.newImage('images/autmat.png'), colBullet
+)
+
+
+wepadd("laser", 
+"Ультра-лазер\nСлучайно выбирает цель ПО ВСЕМУ ПОЛЮ и стреляет по ней.\nНу...Лазер...Мощный...Огромный...за 4250 вы этого и ждете, разве нет?\nКак основопологающая защита - ужасна, но для толп подходит и может целить за границы.\nИсточник лазера так же при стрельбе немного едет назад.",
+    { Think = function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 22
+            local x,y = self.Position["x"] + 55,self.Position['y'] 
+            local gr = self:FindTarget(4444, -3333, -33)
+            
+                if gr then
+                    y = gr.Phys.b:getY() - gr.Size["y"]/2
+                else
+                    y = y - math.random(-333,333)
+                end
+                self["YPosFor"] = y
+                self["XPosFor"] = x
+        end
+        if self.AllCursorsOnPos then
+                local x = self["XPosFor"] 
+                local y = self["YPosFor"] 
+                local proj = BASE_PROJ:BasePROJ("Laser",x + 2500,y)
+                proj:SetPos(x+ proj.Size.x/2,y)
+            self.AllCursorsOnPos = false
+        end
+    end,
+    Draw = function(self, x, y)
+        love.graphics.setColor(0, 0, 0,1)
+            if not self["YOldPos"] then
+                self["YOldPos"] = self["YPosFor"] or y
+            end
+            local f,g = (self["XPosFor"] or x) - 32, self["YOldPos"] or y or 0
+            if math.Round(g) ~= math.Round(self["YPosFor"] or 0) then
+                self["YOldPos"] = math.Approach(self["YOldPos"], self["YPosFor"] or y, math.max(math.abs((self["YPosFor"] or 55) - self["YOldPos"])/150 * BASE_MODULE["SpeedMul"], 0.11) )           
+            else
+                if (self.NextCurs or 0) < CurTime() then
+                    self.AllCursorsOnPos = true  
+                    self.NextCurs = CurTime() + 0.4
+                    self["XPosFor"] = self["XPosFor"] - 3 * BASE_MODULE["SpeedMul"]
+                end
+                if not BASE_MODULE.OnPause then
+                    self["XPosFor"] = self["XPosFor"] - 0.2 * BASE_MODULE["SpeedMul"]
+                end
+            end
+            love.graphics.polygon( 'line', f, g+30, f, g-30, f+50, g )
+        love.graphics.setColor(1, 1, 1,1)
+    end},
+    4250, love.graphics.newImage('images/laser.png'), Color(44,238,232)
 )
 
 

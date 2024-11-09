@@ -242,3 +242,50 @@ function(self)
 end,
 "Огненный шар\nВзрыв становится огнeнным.\nЗа каждый тик урона усиливаeт ГОРEНИE на врагe на 1 стак.\nУрон у взрыва становиться чуть вышe, тип  урона становится огнeнным.", Color(207,156,1)
 )
+fuse(WEAPONS, "laser", "lballer", 
+{ Think = function(self)
+    if self.NextShoot < CurTime() then
+        self.NextShoot = CurTime() + 18
+        local x,y = self.Position["x"] + 55,self.Position['y'] 
+        local gr = self:FindTarget(4444, -3333, -33)
+        
+            if gr then
+                y = gr.Phys.b:getY() - gr.Size["y"]/2
+            else
+                y = y - math.random(-333,333)
+            end
+            self["YPosFor"] = y
+            self["XPosFor"] = x
+    end
+    if self.AllCursorsOnPos then
+            local x = self["XPosFor"] 
+            local y = self["YPosFor"] 
+            local proj = BASE_PROJ:BasePROJ("Laser",x + 2500,y)
+            proj:SetPos(x+ proj.Size.x/2,y)
+            proj.Damage = 323
+        self.AllCursorsOnPos = false
+    end
+end,
+Draw = function(self, x, y)
+    love.graphics.setColor(47/255,109/255,202/255,1)
+        if not self["YOldPos"] then
+            self["YOldPos"] = self["YPosFor"] or y
+        end
+        local f,g = (self["XPosFor"] or x) - 32, self["YOldPos"] or y or 0
+        if math.Round(g) ~= math.Round(self["YPosFor"] or 0) then
+            self["YOldPos"] = self["YPosFor"] or y          
+        else
+            if (self.NextCurs or 0) < CurTime() then
+                self.AllCursorsOnPos = true  
+                self.NextCurs = CurTime() + 0.4
+                self["XPosFor"] = self["XPosFor"] - 6 * BASE_MODULE["SpeedMul"]
+            end
+            if not BASE_MODULE.OnPause then
+                self["XPosFor"] = self["XPosFor"] - 0.4 * BASE_MODULE["SpeedMul"]
+            end
+        end
+        love.graphics.polygon( 'line', f, g+30, f, g-30, f+50, g )
+    love.graphics.setColor(1, 1, 1,1)
+end},
+"Перегруженный лазер\nИсточник лазера телепортируется по полю, но сильнее толкается.\nУрон немного выше, лазер быстрее откатывается.", Color(40,123,134)
+)

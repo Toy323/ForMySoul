@@ -1,8 +1,8 @@
 WAVE = {}
 WAVE.NextWave = 0
 WAVE.EnemyOnWave = 0
-WAVE.Locations = {["Flatland"] = {}}
-WAVE.AddMoneyLoc = {["Flatland"] = {}}
+WAVE.Locations = {["Flatland"] = {}, ["Desert"] = {}}
+WAVE.AddMoneyLoc = {["Flatland"] = {}, ["Desert"] = {}}
 function WAVE:GetWave()
     return BASE_MODULE["WaveNow"] 
 end
@@ -15,7 +15,7 @@ function Count(g)
     end
     return a
 end
-local waveHolder = {"Tank_v2", "Fireman", "Runner","Dodger_v2", "Destroyer", "Powerupper", "Rusher", "Doublid", "Soldier_v2"}
+local waveHolder = {"Tank_v2", "Fireman", "Runner","Dodger_v2", "Destroyer", "Powerupper", "Rusher", "Doublid", "Soldier_v2", "Sir", "Slowdowner", "Sundowner", "Dune_warrior", "Sundowner_Boss", "Mayor_dodger"}
 
 WAVE.Locations["Flatland"] = {
     {"Soldier", "Crip"},
@@ -61,11 +61,67 @@ WAVE.Locations["Flatland"] = {
 WAVE.AddMoneyLoc["Flatland"] = {
     3,
     1,
-    [35] = -1250,
-    [39] = 250,
+    [35] = -1500,
+    [39] = 300,
 }
-WAVE.AddMoneyLoc["Flatland"][50] = 1250
-WAVE.Locations["Flatland"][75] = {"Boss_Mother"}
+WAVE.AddMoneyLoc["Flatland"][50] = 2500
+WAVE.Locations["Flatland"][65] = {"Boss_Mother"}
+
+WAVE.Locations["Desert"] = {
+    {"Sir"},
+    {"Sir"},
+    {"Sir"},
+    {"Sir", "Dodger", "Dodger"},
+    {"Sir", "Dodger"},
+    {"Sir"},
+    {"Slowdowner"},
+    {"Slowdowner", "Sir"},
+    {"Sir", "Doublid", "Doublid"},
+    {"Sir", "Dodger"},
+    {"Slowdowner", "Sir", "Doublid"},
+    {"Slowdowner", "Sir"},
+    {"Sundowner"},
+    {"Sundowner"},
+    {"Sir", "Doublid"},
+    {"Sir", "Dodger", "Dodger"},
+    {"Slowdowner", "Sir"},
+    {"Slowdowner","Slowdowner","Sundowner"},
+    {"Slowdowner","Slowdowner","Sundowner"},
+    {"Slowdowner","Slowdowner","Sundowner"},
+    {"Sundowner_Boss"},
+    {"Slowdowner","Sir","Sir","Sir","Sundowner"},
+    {"Slowdowner","Sir","Mayor","Sir","Sundowner"},
+    {"Slowdowner","Sir","Mayor","Mayor"},
+    {"Mayor", "Dodger"},
+    {"Mayor", "Doublid"},
+    {"Mayor", "Dodger"},
+    {"Mayor", "Doublid"},
+    {"Sundowner_Boss"},
+    {"Mayor_dodger"},
+    {"Mayor_dodger", "Rusher"},
+    {"Mayor_dodger", "Mayor"},
+    {"Slowdowner", "Mayor"},
+    {"Slowdowner", "Sundowner","Mayor"},
+    {"Mayor"},
+    {"Mayor"},
+    {"Mayor"},
+    {"Mayor_dodger", "Mayor", "Doublid"},
+    {"Mayor_doublid", "Doublid", "Doublid", "Doublid"},
+    {"Mayor_doublid", "Doublid", "Doublid"},
+    {"Mayor_doublid", "Doublid"},
+    {"Mayor_doublid"},
+    {"Dune_doublid", "Doublid", "Doublid", "Doublid"},
+    {"Dune_doublid", "Doublid", "Mayor_doublid", "Doublid"},
+    {"Dune_doublid", "Mayor_doublid", "Mayor_doublid", "Rusher"},
+    {"Dune_doublid"},
+    {"Dune_warrior", "Mayor_dodger"},
+    {"Dune_warrior"},
+    {"Dune_warrior", "Mayor_dodger"},
+    {"Dune_warrior","Dodger_v2","Dodger_v2"},
+    {"Sundowner_Boss"},
+    {"Sundowner_Boss", "Dune_warrior", "Dune_warrior"},
+    {"Dune_warrior_boss"}
+}
 function WAVE:Start()
     BASE_MODULE.ActiveMode = true
     local ene = Count(ENEMIES)

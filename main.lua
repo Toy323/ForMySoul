@@ -1,7 +1,7 @@
 BASE_MODULE = {}
 BASE_MODULE.Time = 0
-BASE_MODULE.Version = "0.3.3.3"
-BASE_MODULE.WaveNow = 0
+BASE_MODULE.Version = "0.4.4.4"
+BASE_MODULE.WaveNow = 0 
 BASE_MODULE["TimeR"] = 0
 SUBMODULE_INPUT = {}
 SUBMODULE_DRAW = {}
@@ -19,7 +19,17 @@ end
 function Color(r,g,b,a)
     return {['r'] = math.min(255,r),['g'] = math.min(255,g),['b'] = math.min(255,b),['a'] = a}
 end
+function math.Approach( cur, target, inc )
+	if ( cur < target ) then
+		return math.min( cur + math.abs( inc ), target )
+	end
 
+	if ( cur > target ) then
+		return math.max( cur - math.abs( inc ), target )
+	end
+
+	return target
+end
 
 function math.Clamp( _in, low, high )
 	return math.min( math.max( _in, low ), high )
@@ -61,7 +71,7 @@ BASE_MODULE.Sounds["energySound"] = {
     addSound("sound/power1.ogg","static"),
     addSound("sound/power4.wav", "static"),
     addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),--1 звук...
+    addSound("sound/power4.wav", "static"),--Такоe нужно чтобы звуки могли дальшe воспроизводиться,но это достигнeт лимитов...
 
 }
 function PlaySound(variant, number)
@@ -495,6 +505,13 @@ function remCache2()
     end
     cache2 = {}
 end
+local locID = {
+    ["Flatland"] = 1,
+    ["Desert"] = 2,
+    [1] = "Flatland",
+    [2] = "Desert"
+}
+
 BASE_MODULE.Location = "Flatland"
 function loadMenu(arguments)
     local x2,y2 = love.graphics.getDimensions()
@@ -511,6 +528,13 @@ function loadMenu(arguments)
     button.OnClickDo = function()
         remCache2()
         loadAlmanax()
+    end
+
+    local button = BUTTON.AddButton(1,x2/1.3 - 256/2,y2/2 - 256/2,Color(90,78,0),1,1, forward)
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        BASE_MODULE.Location = locID[locID[BASE_MODULE.Location] + 1] or "Flatland"
+        BASE_MODULE.SelLoc = BASE_MODULE.Location
     end
 end
 function love.load()
@@ -569,8 +593,22 @@ function love.mousepressed( x, y, button, istouch, presses )
        end
     end
 end
+local desertCol = Color(93,79,24)
+local aaargb = {"r","g", "b"}
+local colbase = {0.02, 0.25, 0}
+local colbase2 = {0.02, 0.25, 0}
 function love.draw()
-    love.graphics.setBackgroundColor(0.02,0.25,0)
+    local isDesert = BASE_MODULE.Location == "Desert"
+    if isDesert then
+        for i=1,3 do
+            colbase2[i] = math.Approach(colbase2[i], desertCol[aaargb[i]]/255, 0.004)
+        end
+    else
+        for i=1,3 do
+           colbase2[i] =  math.Approach(colbase2[i], colbase[i], 0.004)
+        end
+    end
+    love.graphics.setBackgroundColor(colbase2[1], colbase2[2], colbase2[3])
     local scale = Scale()
     if gameloaded then
         love.graphics.print("Wave "..WAVE:GetWave(),128 * scale,128 * scale)
