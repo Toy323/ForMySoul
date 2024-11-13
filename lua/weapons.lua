@@ -136,6 +136,10 @@ WEAPONS.FuncByID = {
             if self.Health <= 0 then
                 self:Remove()
             end
+            local snd = PlaySound("damageHard",math.random(1,#BASE_MODULE.Sounds["damageHard"]))
+            if snd then
+                snd:setPitch(rand(1.1,1.3))
+            end
             enemy:TakeDamage(10 + WAVE:GetWave()*5, "Spike")
         end
     end,
@@ -200,7 +204,7 @@ WEAPONS.FuncByID = {
                 local proj = BASE_PROJ:BasePROJ("Normal",x,y)
                 proj.YSpeed = i < 3 and -30*i or 30*i
                 proj:SetPos(x,y)
-                proj.Damage = 15
+                proj.Damage = math.Round(35/(2.5/((self.NoShoot or 1)%5))) + 15
             end
             self.NoShoot = (self.NoShoot or 0) + 1
         end
@@ -328,7 +332,7 @@ WEAPONS.IconsByID = {
 
 WEAPONS.DescByID = {
     "Тристрел\nСтреляет тремя пулями по 15 урона каждая.\nМожет задевать другии линии.",
-    "Морозный СМГ\nСтреляет тремя пулями подряд наносящими 10(x2 урон по огнeнным врагам).\nКаждое попадание уменьшает скорость врага на 15%, дeйстуeт 5 раз.\nСтреляет прямо.",
+    "Морозный СМГ\nСтреляет тремя пулями подряд наносящими 10(x2 урон по огнeнным врагам).\nКаждое попадание уменьшает скорость врага на 15%, дeйстуeт 5 раз.\nСтреляет прямо.\nВ пустыне не замораживает,а накладывает статус намокания,который усиливает урон по врагу.",
     "Генератор Щита\nЗадевает половину верхней линии и наносит 500 урона(урон уменьшается когда наносит урон по врагам с маленьким здоровьем).\nСтреляет прямо.",
     "Воротила\nСтреляет пулями с волнообразной траекторирей, при этом урон в полете увеличивается.\nМожет задевать другие линии.",
     "Зарядник\nЗаряжает атаку, чтобы выстрельнуть 12 пулями подряд, у которых 4 урона.\nСтреляет прямо.",
@@ -347,8 +351,10 @@ WEAPONS.DescByID = {
     "Яростливый звон\nЧем меньше здоровья, тем больше урона.\nПолностью задевает свою линию.",
     "Дубликатор\nСоздает перед собой 2 подражания пули, c тeм жe уроном, но бeз больших функций.\nИногда задерживает пули и хранит их взади себя и не дублирует дублированные пули, а оставляeт их.",
 }
+WEAPONS.IconForWep = {}
+WEAPONS.ColForWep = {}
 WEAPONS.BaseCD = {}
-function WEAPONS.AddWeapon(name, desc, func, cost, img, color, cd)
+function WEAPONS.AddWeapon(name, desc, func, cost, img, color, cd, icon)
     local id = #WEAPONS.NamesByID + 1
     WEAPONS.NamesByID[id] = name
     WEAPONS.FuncByID[id] = func
@@ -356,6 +362,10 @@ function WEAPONS.AddWeapon(name, desc, func, cost, img, color, cd)
     WEAPONS.DescByID[id] = desc or "No Name\nNo Desc"
     if img then
         WEAPONS.IconsByID[id] = {img, color}
+    end
+    if icon then
+        WEAPONS.IconForWep[name] = icon
+        WEAPONS.ColForWep[name] = color
     end
     BASE_MODULE[name.."_cd"] = BASE_MODULE[name.."_cd"] or 0
     WEAPONS.BaseCD[name] = WEAPONS.BaseCD[name] or cd or 3
@@ -393,7 +403,7 @@ wepadd("speeder",
             end
         end
     end,
-    1900, love.graphics.newImage('images/speeder.png'), Color(37,211,14)
+    1900, love.graphics.newImage('images/speeder.png'), Color(37,211,14), nil,  love.graphics.newImage('images/speeder.png')
 )
 wepadd("speederv2", 
 "Сверх-ускоритель\nКаждые 25 секунд ускоряет все сооружения.\nУскорение снижает текущую задержку выстрела или добычи на 75%.\nНе может ускорить себя же и себе подобных.\nМожет быть ускорен своим младшим братом,но лишь на 12%.",
@@ -409,17 +419,17 @@ wepadd("speederv2",
             end
         end
     end,
-    5000, love.graphics.newImage('images/speeder.png'), colUpg
+    5000, love.graphics.newImage('images/speeder.png'), colUpg, nil,  love.graphics.newImage('images/speeder.png')
 )
 
 wepadd("rain", 
-"Стрелы вверх!\nСоздает дождь из снарядов каждые 11 секунд.\nВ дожде обычно от 12 до 30 снарядов с уроном в 50-120 единиц.",
+"Стрелы вверх!\nСоздает дождь из снарядов каждые 11 секунд.\nВ дожде обычно от 12 до 30 снарядов с уроном в 80-220 единиц.",
     function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 11
             local x,y = self.Position["x"],self.Position['y']
             for i=1,rand(12,30) do
-                local damage = rand(50,120)
+                local damage = rand(80,220)
                 local proj = BASE_PROJ:BasePROJ("Normal",x,y)
                 proj:SetPos(x,y)
                 proj.DieTime = CurTime() + 22
@@ -685,12 +695,12 @@ wepadd("automat",
 
 
 wepadd("laser", 
-"Ультра-лазер\nСлучайно выбирает цель ПО ВСЕМУ ПОЛЮ и стреляет по ней.\nНу...Лазер...Мощный...Огромный...за 4250 вы этого и ждете, разве нет?\nКак основопологающая защита - ужасна, но для толп подходит и может целить за границы.\nИсточник лазера так же при стрельбе немного едет назад.",
+"Ультра-лазер\nСлучайно выбирает цель ПО ВСЕМУ ПОЛЮ и стреляет по ней.\nНу...Лазер...Мощный...Огромный...за 7250 вы этого и ждете, разве нет?\nКак основопологающая защита - ужасна, но для толп подходит и может целить за границы.\nИсточник лазера так же при стрельбе немного едет назад.",
     { Think = function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 22
             local x,y = self.Position["x"] + 55,self.Position['y'] 
-            local gr = self:FindTarget(4444, -3333, -33)
+            local gr = self:FindTarget(4444, -3333, 2222)
             
                 if gr then
                     y = gr.Phys.b:getY() - gr.Size["y"]/2
@@ -729,7 +739,7 @@ wepadd("laser",
             love.graphics.polygon( 'line', f, g+30, f, g-30, f+50, g )
         love.graphics.setColor(1, 1, 1,1)
     end},
-    4250, love.graphics.newImage('images/laser.png'), Color(44,238,232)
+    7250, love.graphics.newImage('images/laser.png'), Color(44,238,232), nil,  love.graphics.newImage('images/wepsome/laserito.png')
 )
 
 

@@ -1,12 +1,19 @@
 BASE_MODULE = {}
 BASE_MODULE.Time = 0
-BASE_MODULE.Version = "0.4.4.4"
-BASE_MODULE.WaveNow = 0 
+BASE_MODULE.Version = "0.6.3.2"
+BASE_MODULE.WaveNow = 0
 BASE_MODULE["TimeR"] = 0
 SUBMODULE_INPUT = {}
 SUBMODULE_DRAW = {}
 PHANTOMS = {}
 BUTTON = {}
+NOSOUND = false
+
+LOCATIONS_FEATURES = {}
+
+function GetLocationFeatures()
+    return LOCATIONS_FEATURES[BASE_MODULE.Location] or LOCATIONS_FEATURES["Flatland"]
+end
 function print_t(...)
     for k,v in pairs(...) do
         print(k, v)
@@ -19,6 +26,17 @@ end
 function Color(r,g,b,a)
     return {['r'] = math.min(255,r),['g'] = math.min(255,g),['b'] = math.min(255,b),['a'] = a}
 end
+LOCATIONS_FEATURES["Flatland"] = {
+}
+LOCATIONS_FEATURES["Desert"] = {
+    ColorOfBackground = Color(93,79,24)
+}
+LOCATIONS_FEATURES["Graveyard"] = {
+    ColorOfTiles = Color(12,12,17),
+    ColorOfBackground = Color(49,46,59),
+    Music = true
+}
+
 function math.Approach( cur, target, inc )
 	if ( cur < target ) then
 		return math.min( cur + math.abs( inc ), target )
@@ -34,7 +52,7 @@ end
 function math.Clamp( _in, low, high )
 	return math.min( math.max( _in, low ), high )
 end--ХУЛE EE ТУТ НEТУ?????
-
+mVolume = 0.45
 require('lua/table_enc')
 require('lua/middleclass')
 require('lua/tilemap')
@@ -43,40 +61,13 @@ require('lua/projectiles')
 require('lua/waves')
 require('lua/weapons')
 require('lua/fusions')
-local addSound = love.audio.newSource
-BASE_MODULE.Sounds = {}
+require('lua/particles')
+require('lua/sounds')
+
 local smgpause = love.graphics.newImage('images/pause.png')
 local resume = love.graphics.newImage('images/start.png')
 local resume2 = love.graphics.newImage('images/256_ready.png')
 
-BASE_MODULE.Sounds["energySound"] = {
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),
-    addSound("sound/power1.ogg","static"),
-    addSound("sound/power4.wav", "static"),--Такоe нужно чтобы звуки могли дальшe воспроизводиться,но это достигнeт лимитов...
-
-}
-function PlaySound(variant, number)
-    BASE_MODULE.Sounds[variant][(number or 1)]:play()
-end
 local mouse = love.mouse
 -- success, valueOrErrormsg = runFile( name )
 local function runFile(name)
@@ -149,11 +140,16 @@ local imgx2 = love.graphics.newImage('images/double_by_2.png')
 local imgx4 = love.graphics.newImage('images/double_by_4.png')
 
 BASE_MODULE["SpeedMul"] = 1
-local baseMoney = DevMode() and 250000 or 1000
+local baseMoney = DevMode() and 25000000 or 1000
 BASE_MODULE["MoneyNow"] = baseMoney
+local baseEnergy = DevMode() and 50000 or 0
+BASE_MODULE["EnergyNow"] = baseEnergy
 BASE_MODULE.HealthNow = 10000
 function GetM()
     return BASE_MODULE.MoneyNow
+end 
+function GetEn()
+    return BASE_MODULE.EnergyNow
 end 
 function ClearAll()
     for k,v in pairs(cache) do
@@ -203,11 +199,18 @@ function loadGame()
         end
         button.img = BASE_MODULE["SpeedMul"] == 2 and imgx2 or BASE_MODULE["SpeedMul"] == 4  and imgx4 or imgx1
     end
+    local colD = GetLocationFeatures().ColorOfTiles or Color(156,215,96)
     cache[#cache + 1] = button.ID
     local button = BUTTON.AddButton(1,1500,66,Color(5,130,28),1,1, ready)
     button.OnClickDo = function() 
         if not BASE_MODULE.ActiveMode then
-            tiles:CreateMapFull(0,320,5,125, FORMULA_PARALEP_R, 12, Color(156,215,96))
+            tiles:CreateMapFull(BASE_MODULE.Location == "Graveyard" and 120 or 0,320,5,125, FORMULA_PARALEP_R, BASE_MODULE.Location == "Graveyard" and 10 or 12, colD)
+            if BASE_MODULE.Location == "Graveyard" then
+                for i=1,6 do
+                    tilesblock[24 + i]:Remove()
+                    tilesblock[36 + i]:Remove()
+                end
+            end
         end
         WAVE:Start()
     end
@@ -229,6 +232,7 @@ function loadGame()
     
     button.OnClickDo = function(x,y)
         BASE_MODULE["MoneyNow"] = baseMoney
+        BASE_MODULE["EnergyNow"] = baseEnergy
         BASE_MODULE.HealthNow = 10000
         BASE_MODULE.ActiveMode = false
         WAVE.NextWave = 0
@@ -295,7 +299,7 @@ function loadGame()
                 local img = WEAPONS.IconsByID[i] and WEAPONS.IconsByID[i][1] or nil
                 button.NOPICK = true
                 button.Position = {x = 222222,y =222222}
-                local gal = BUTTON.AddButton(48, 64*2 + 64 * g, 66, img and WEAPONS.IconsByID[i][2] or Color(51,167,169), img and 1, img and 1, img, {WEAPONS.CostByName[WEAPONS.NamesByID[i]], 0, -15})
+                local gal = BUTTON.AddButton(48, 64*2 + 64 * g, 66, img and WEAPONS.IconsByID[i][2] or Color(51,167,169), img and 1, img and 1, img, {WEAPONS.CostByName[WEAPONS.NamesByID[i]].."("..g..")", 0, -15})
                 BASE_MODULE["ButtonOn"..g] = gal
                 table.insert(cache, gal.ID)
                 if #was > 8 then
@@ -323,7 +327,7 @@ function loadGame()
                                     local id = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..gal.WeaponOnMe] or WEAPONS.IDFusion[gal.WeaponOnMe.."plus"..v.WeaponOnMe] or WEAPONS.IDFusion[v.IDOfWeapon.."plus"..gal.WeaponOnMe] or WEAPONS.IDFusion[gal.WeaponOnMe.."plus"..v.IDOfWeapon]
                                     if id then
                                         local synergy = WEAPONS.RevertID[id]
-                                        local g = tile:Create(v.Position.x,v.Position.y,125/2,Color(156,215,96))
+                                        local g = tile:Create(v.Position.x,v.Position.y,125/2,v.OldColor or Color(156,215,96))
                                         DoNextFrame(function() g:SetColor(WEAPONS.ColorOfFus[id]) end)
 
                                         if BASE_MODULE[WEAPONS.NamesByID[i].."_cd"] then
@@ -355,9 +359,9 @@ function loadGame()
                                             end
                                         end
                                         g:AddCollision()
-                                        
+                                        local oldc = g.OldColor
                                         g.OnRemove = function(self,x,y)
-                                            tile:Create(x,y,125/2,Color(156,215,96))
+                                            tile:Create(x,y,125/2, oldc)
                                         end
                                         v.OnRemove = function(self,x,y) end
                                         v:Remove()
@@ -394,8 +398,9 @@ function loadGame()
                                         end
                                     end
                                     v:AddCollision()
+                                    local oldc = v.OldColor
                                     v.OnRemove = function(self,x,y)
-                                        tile:Create(x,y,125/2,Color(156,215,96))
+                                        tile:Create(x,y,125/2, oldc)
                                     end
                                     break 
                                 end
@@ -416,6 +421,7 @@ function loadGame()
                     if  WEAPONS.DescByID[i] and SELECTED_TOOL ~= gal then
                         love.graphics.setColor(0.1,.1,.1)
                         love.graphics.print( WEAPONS.DescByID[i],x+1,y+33)
+                        love.graphics.print( WEAPONS.DescByID[i],x-1,y+31)
                         love.graphics.setColor(1,1,1)
                         love.graphics.print( WEAPONS.DescByID[i],x,y+32)
                     end
@@ -436,6 +442,7 @@ function loadGame()
             if WEAPONS.DescByID[i] then
                 love.graphics.setColor(0.1,.1,.1)
                 love.graphics.print( WEAPONS.DescByID[i],x+1,y+33)
+                love.graphics.print( WEAPONS.DescByID[i],x-1,y+31)
                 love.graphics.setColor(1,1,1)
                 love.graphics.print( WEAPONS.DescByID[i],x,y+32)
             end
@@ -499,6 +506,81 @@ function loadAlmanax()
         end
     end
 end
+
+function loadInfo()
+    local x2,y2 = love.graphics.getDimensions()
+    local button = BUTTON.AddButton(1,x2/12 - 64/2,y2/1.2 - 64/2,Color(90,0,0),1,1, back)
+
+    button.OnClickDo = function()
+        love.timer.sleep(0.1)
+        BUTTON.RemoveButton(button.ID)
+        remCache2()
+        loadMenu()
+    end
+
+
+    local button = BUTTON.AddButton(1,x2*0.03,y2/8,Color(99,88,77),77, 48, nil, {"Об Игре", 0, 22})
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        --Костыли!!!
+    end
+    button.OnSeen = function(x,y)
+        local desc = [[Эта игра в стиле Tower Defense
+        Основные игровые ресурсы - это ресурс и энергия.
+        Вам выдают 10000 очков здоровья в начале игры, каждый враг,прошедший в конец, отнимает ваши ОЗ равному своему текущему ОЗ.
+        Чтобы защищаться от врагов - вам надо ставить всякого рода сооружeния, от безобидных добытчиком, до лазеров.
+        Враги могут ходить между линиями!
+        Некоторые сооружения можно совмещать, они будут светится если вы взяли постройку которая совмещается с ним, не забывайте экспериментировать!
+        Выбирать можно до 9 сооружений.
+        Чтобы начать игру надо нажать на галочку(она зеленая).
+        Желтоватая странная иконка - это рестарт раунда, так что можно быстро перезапускать раунд.
+        ]]
+        local x,y = x2*0.06, y2/4
+        love.graphics.setFont(FONTS_MODULES["opensansc22"])
+        love.graphics.setColor(0.1,.1,.1)
+        love.graphics.print( desc,x,y+33)
+        love.graphics.setColor(1,1,1)
+        love.graphics.print( desc,x,y+32)
+    end
+    
+    local button = BUTTON.AddButton(1,x2*0.12,y2/8,Color(77,47,17),77, 48, nil, {"Об Ресурсах", 0, 22})
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        --Костыли!!!
+    end
+    button.OnSeen = function(x,y)
+        local desc = [[Ресурсы - важный ресурс, без него тут не выжить
+        Зарабатываются ресурсы с конца волны либо с добытчиком.
+        За конец волны вам дают 175 + 35*волна единиц ресурса.
+        Ресурсы могут быть украдены у вас, в основном это происходит на локации 'Пустыня', некоторые враги воруют ресурсы там.
+        ]]
+        local x,y = x2*0.06, y2/4
+        love.graphics.setFont(FONTS_MODULES["opensansc22"])
+        love.graphics.setColor(0.1,.1,.1)
+        love.graphics.print( desc,x,y+33)
+        love.graphics.setColor(1,1,1)
+        love.graphics.print( desc,x,y+32)
+    end
+
+
+    local button = BUTTON.AddButton(1,x2*0.2,y2/8,Color(77,47,17),77, 48, nil, {"ААА", 0, 22})
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        --Костыли!!!
+    end
+    button.OnSeen = function(x,y)
+        local desc = [[Это плейсхолдер для каких-то текстов.
+        ]]
+        local x,y = x2*0.06, y2/4
+        love.graphics.setFont(FONTS_MODULES["opensansc22"])
+        love.graphics.setColor(0.1,.1,.1)
+        love.graphics.print( desc,x,y+33)
+        love.graphics.setColor(1,1,1)
+        love.graphics.print( desc,x,y+32)
+    end
+
+
+end
 function remCache2()
     for k,v in pairs(cache2) do
         BUTTON.RemoveButton(v)
@@ -508,11 +590,28 @@ end
 local locID = {
     ["Flatland"] = 1,
     ["Desert"] = 2,
+    ["Graveyard"] = 3,
     [1] = "Flatland",
-    [2] = "Desert"
+    [2] = "Desert",
+    [3] = "Graveyard"
 }
 
 BASE_MODULE.Location = "Flatland"
+local descosLoc = {
+    ["Flatland"] = "СМЕНИТЬ ЛОКАЦИЮ НА: Плоскоземле\nБесконечный мир досея, самые адекватные враги ждут вас тут.\nЛокация без особенностей.\nФинальная волна - 65, после нее бесконечный режим.",
+    ["Desert"] = [[CМЕНИТЬ ЛОКАЦИЮ НА: Пустыня 'Дюнида'
+    После нападения на плоскоземле, вы ушли в пустыню, чтобы сразить врагов там.
+    Тут ждут улучшенные версии врагов и новая форма - треугольник
+    Особенность: Пустыня не терпит ваши постройки, они постепенно умирают.
+    Знайте, за вами отправили более устрашающее войско.
+    Финальная волна - 400, после нее бесконечный режим.]],
+    ["Graveyard"] = [[CМЕНИТЬ ЛОКАЦИЮ НА: Кладбище древности
+    Прошли сквозь Пустыню?А тeпeрь...Кладбище - Досея, множество мелких врагов...
+    Кое-кто вас ждет.
+    Особенность: Враги постоянно оживают и часть клеток становятся не используемыми.
+    Финальная волна - 150, последняя уникальная волна - 500.]],
+
+}
 function loadMenu(arguments)
     local x2,y2 = love.graphics.getDimensions()
     local button = BUTTON.AddButton(1,x2/2- 256/2,y2/2 - 256/2,Color(0,90,15),1,1, resume2)
@@ -530,21 +629,56 @@ function loadMenu(arguments)
         loadAlmanax()
     end
 
-    local button = BUTTON.AddButton(1,x2/1.3 - 256/2,y2/2 - 256/2,Color(90,78,0),1,1, forward)
+    local button = BUTTON.AddButton(1,x2/1.3 - 256/2,y2/2 - 256/2,Color(0,0,0),1,1, forward)
     cache2[#cache2 + 1] = button.ID
     button.OnClickDo = function()
+        if GetLocationFeatures().Music then
+            BASE_MODULE.Sounds["Music"][BASE_MODULE.Location]:setLooping(false)
+            BASE_MODULE.Sounds["Music"][BASE_MODULE.Location]:stop()
+        end
         BASE_MODULE.Location = locID[locID[BASE_MODULE.Location] + 1] or "Flatland"
         BASE_MODULE.SelLoc = BASE_MODULE.Location
+        if GetLocationFeatures().Music then
+            BASE_MODULE.Sounds["Music"][BASE_MODULE.Location]:setLooping(true)
+            BASE_MODULE.Sounds["Music"][BASE_MODULE.Location]:play()
+        end
+    end
+    button.OnSeen = function(x,y)
+        local desc = descosLoc[locID[locID[BASE_MODULE.Location] + 1] or "Flatland"]
+        love.graphics.setColor(0.1,.1,.1)
+        love.graphics.print( desc,x+1,y+33)
+        love.graphics.setColor(1,1,1)
+        love.graphics.print( desc,x,y+32)
+    end
+
+
+    local button = BUTTON.AddButton(1,x2/1.3 - 256/2,y2/1.75,Color(101,101,101),48, 48, nil, {"i", 16, 0, nil, "opensansc32"})
+    cache2[#cache2 + 1] = button.ID
+    button.OnClickDo = function()
+        remCache2()
+        loadInfo()
+    end
+    button.OnSeen = function(x,y)
+        local desc = "Информация об игре."
+        love.graphics.setColor(0.1,.1,.1)
+        love.graphics.print( desc,x+1,y+33)
+        love.graphics.setColor(1,1,1)
+        love.graphics.print( desc,x,y+32)
     end
 end
-function love.load()
+function love.load(arg)
     print(love.window.getFullscreen())
+
+    for k,v in pairs(arg) do
+        print(k,v)
+    end
     love.window.setFullscreen(true)
     love.window.setTitle("Doset Vs Dosei v"..BASE_MODULE.Version)
     loadMenu()
 
 end
 BASE_MODULE.OnPause = false
+local num = 0
 function love.update(time)
     BASE_MODULE["TimeR"] = (BASE_MODULE["TimeR"] or 0) + time
     time = time * BASE_MODULE["SpeedMul"]
@@ -554,6 +688,11 @@ function love.update(time)
             BASE_MODULE.world:update(time)
         end
     end
+    local done = collectgarbage("step",5)
+	if(done)then
+		num = num + 1
+		print("Garbage Collected " .. num)
+	end
 end
 function love.keypressed(button, code, isrepeat)
     if button then
@@ -593,15 +732,15 @@ function love.mousepressed( x, y, button, istouch, presses )
        end
     end
 end
-local desertCol = Color(93,79,24)
 local aaargb = {"r","g", "b"}
 local colbase = {0.02, 0.25, 0}
 local colbase2 = {0.02, 0.25, 0}
+
 function love.draw()
-    local isDesert = BASE_MODULE.Location == "Desert"
+    local isDesert = BASE_MODULE.Location ~= "Flatland"
     if isDesert then
         for i=1,3 do
-            colbase2[i] = math.Approach(colbase2[i], desertCol[aaargb[i]]/255, 0.004)
+            colbase2[i] = math.Approach(colbase2[i], (GetLocationFeatures().ColorOfBackground or Color(171,169,169))[aaargb[i]]/255, 0.004)
         end
     else
         for i=1,3 do
@@ -611,11 +750,15 @@ function love.draw()
     love.graphics.setBackgroundColor(colbase2[1], colbase2[2], colbase2[3])
     local scale = Scale()
     if gameloaded then
-        love.graphics.print("Wave "..WAVE:GetWave(),128 * scale,128 * scale)
+        love.graphics.setFont(FONTS_MODULES["opensansc25"])
+        love.graphics.print("Волна "..WAVE:GetWave(),128 * scale,128 * scale)
 
-        love.graphics.print("Minerals Now "..GetM(),32 * scale,32 * scale)
+        love.graphics.print("Ресурсов: "..GetM(),32 * scale,24 * scale)
 
-        love.graphics.print("HP: "..BASE_MODULE.HealthNow,32 * scale,64 * scale)
+        love.graphics.print("Энергии: "..GetEn(),32 * scale,96 * scale)
+
+        love.graphics.print("ОЗ: "..BASE_MODULE.HealthNow,32 * scale,64 * scale)
+        love.graphics.setFont(FONTS_MODULES["opensansc12"])
     end
 
     SUBMODULE_DRAW.Think()
@@ -623,7 +766,7 @@ function love.draw()
     --[[love.graphics.circle("line", ball.b:getX(),ball.b:getY(), ball.s:getRadius(), 20)
     love.graphics.polygon("line", static.b:getWorldPoints(static.s:getPoints()))]]
 end
-
+N_S_G = 0
 function SUBMODULE_DRAW.Think()
     local lastinput = BASE_MODULE["LastTextInput"] 
     local time = BASE_MODULE["Time"]
@@ -645,6 +788,17 @@ function SUBMODULE_DRAW.Think()
     BASE_ENEMY:Think()
     BASE_PROJ:Think()
     BUTTON.ThinkButtons()
+    PARC:Think()
+    if BASE_MODULE.Location == "Desert" and N_S_G < RealTime() then
+        N_S_G = RealTime() + 0.15
+        for i=1,22 do
+            local g = PARCB:New(Color(244,164,96), 2, rand(3,8), {x = 2100 + rand(0,900), y = -330 + rand(0,1600)})
+            g.Think = function()
+                g.Position.y = g.Position.y + rand(0.1, 6) * BASE_MODULE["SpeedMul"]
+                g.Position.x = g.Position.x - rand(12,22) * BASE_MODULE["SpeedMul"]
+            end
+        end
+    end
     for k,v in pairs(nextframes) do
         v()
     end
@@ -707,9 +861,9 @@ FONTS_MODULES = {}
 function FONTS_MODULES.CreateFont(name, size, hinting, dpiscale)
     FONTS_MODULES[name..size] = love.graphics.newFont(name..".ttf",size)
 end
-FONTS_MODULES.CreateFont("opensansc",32)
-FONTS_MODULES.CreateFont("opensansc",12)
-FONTS_MODULES.CreateFont("opensansc",15)
+for i=1,128 do
+    FONTS_MODULES.CreateFont("opensansc",i)
+end
 fonts = FONTS_MODULES
 --BUTTON
 BUTTONS_SUB = {}
@@ -724,6 +878,7 @@ function BUTTON.AddButton(size,x,y,color,sizex,sizey,image, txt)
         button["xt"] = txt[2]
         button["yt"] = txt[3]
         button["colt"] = txt[4] or Color(255,255,255)
+        button['font'] = txt[5]
     end
     button.ID = #BUTTONS_SUB+1
     BUTTONS_SUB[button.ID] = button
@@ -757,7 +912,7 @@ function BUTTON.ThinkButtons()
                 love.graphics.rectangle( "fill", x, y+64-64* (cd-CurTime())/(WEAPONS.BaseCD[mv] or 1), 64, 64 * (cd-CurTime())/(WEAPONS.BaseCD[mv] or 1))
             end
             if v.txt then
-                love.graphics.setFont(FONTS_MODULES["opensansc15"])
+                love.graphics.setFont(FONTS_MODULES[v.font or "opensansc15"])
                 color = Copy(v.colt)
                 love.graphics.setColor(color.r/255,color.g/255,color.b/255)
                 love.graphics.print(v.txt,x + v.xt ,y + v.yt)
@@ -770,3 +925,4 @@ function BUTTON.ThinkButtons()
         end
     end
 end
+

@@ -221,6 +221,10 @@ fuse(WEAPONS, "slowpoke", "shield_dmg",
         if self.Health <= 0 then
             self:Remove()
         end
+        local snd = PlaySound("damageHard",math.random(1,#BASE_MODULE.Sounds["damageHard"]))
+        if snd then
+            snd:setPitch(rand(0.6,0.9))
+        end
         enemy:TakeDamage(5 + WAVE:GetWave()*math.min(25,self.Regenerator or 1), "Spike")
     end
 end,
@@ -288,4 +292,23 @@ Draw = function(self, x, y)
     love.graphics.setColor(1, 1, 1,1)
 end},
 "Перегруженный лазер\nИсточник лазера телепортируется по полю, но сильнее толкается.\nУрон немного выше, лазер быстрее откатывается.", Color(40,123,134)
+)
+fuse(WEAPONS, "shield", "powerer", 
+function(self)
+    if self.NextShoot < CurTime()  then
+        self.NextShoot = CurTime() + 25
+        local x,y = self.Position["x"],self.Position['y']
+        local proj = BASE_PROJ:BasePROJ("Shield",x,y)
+        proj:SetPos(x,y)
+        proj.NG = 0
+        proj.Think = function()
+            if proj.NG < CurTime() then
+                proj.Damage = math.Round(proj.Damage *1.01,2)
+                proj.NG = CurTime() + 0.08
+            end
+            proj:Walk()
+        end
+    end
+end,
+"Усиливающийся щит\nЩит во время полета очень сильно усиляется.\nЩит может усилится вплоть до 8000 урона!", Color(88,175,163)
 )

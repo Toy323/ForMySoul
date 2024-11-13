@@ -14,7 +14,7 @@ end
 local function sort(a,b)
     return a.Phys and a.Phys.b:getX() < ( b.Phys and b.Phys.b:getX())
 end
-function tile:FindTarget(size,l, down) -- l - Длина
+function tile:FindTarget(size,l, down)
     size = size or 1
     local x,y = self.Position.x, self.Position.y - (down or 0)
     local enemies = {}
@@ -72,6 +72,7 @@ function tile:Create(x, y, size, color)
     selfy:SetPos(x,y)
     selfy.Size = size
     selfy.Color = color
+    selfy.OldColor = color
     return selfy
 end
 function tile:SetColor(color)
@@ -85,8 +86,16 @@ tile.Health = 325
 function tile:OnContact(enemy)
     if enemy and enemy.Phys and enemy.Phys.b then
         if enemy.GetSpeed and enemy:GetSpeed() then
-            enemy.Phys.b:applyForce(enemy:GetSpeed()*85, 0)
+            DoNextFrame(function() 
+                if enemy and enemy.Phys and enemy.Phys.b and not enemy.Phys.b:isDestroyed() then
+                    enemy.Phys.b:applyForce(enemy:GetSpeed()*85 * (enemy.Phys.b:getMass() + 0.01), 0) 
+                end
+            end)
             if enemy.AttackSpeed and (enemy.NextEat or 0) < CurTime() then
+                local snd = PlaySound("damageTake",math.random(1,#BASE_MODULE.Sounds["damageTake"]))
+                if snd then
+                    snd:setPitch(rand(1.4,1.55))
+                end
                 self.Health = self.Health - 25 * enemy.DamageX 
                 enemy.NextEat = CurTime() + enemy.AttackSpeed*5
                 enemy.NoWalk = CurTime() + 0.4
@@ -201,6 +210,12 @@ function tiles:Think()
             love.graphics.setColor(1, 1, 1,1)
             if v.Think then
                 v:Think()
+            end
+            if WEAPONS.IconForWep[v.WeaponOnMe] then
+                local cole = WEAPONS.ColForWep[v.WeaponOnMe]
+                love.graphics.setColor(cole.r/255,cole.g/255,cole.b/255, (cole.a or 255)/255)
+                love.graphics.draw(  WEAPONS.IconForWep[v.WeaponOnMe], v.Position.x - size/2, v.Position.y - size/2, 0, 1, 1)
+                love.graphics.setColor(1, 1, 1,1)
             end
             if v.Draw then
                 v:Draw(v.Phys.b:getX(), v.Phys.b:getY())

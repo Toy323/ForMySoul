@@ -8,7 +8,8 @@ BASE_PROJ.projectilesList = {
         Damage = 12,
         FlySpeed = 500,
         Color = Color(161,0,176),
-        Size = 12
+        Size = 12,
+        SndOnHit = true
     },
     ["LBall"] = {
         Damage = 50,
@@ -32,7 +33,7 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 500,
         Color = Color(9,4,46),
         Size = 360,
-        DMGType = "Energy",
+        DMGType = "Destroying",
         OnContact = function(self, enemy)
             self.Phys.f:setCategory(4)
             enemy.Phys.f:setMask(4)
@@ -67,9 +68,9 @@ BASE_PROJ.projectilesList = {
         end
     },
     ["Laser"] = {
-        Damage = 222,
+        Damage = 150,
         FlySpeed = 0,
-        Color = Color(39,203,192),
+        Color = Color(39,203,192, 33),
         Size = 155,
         DMGType = "Laser",
         OnContact = function(self, enemy)
@@ -78,7 +79,7 @@ BASE_PROJ.projectilesList = {
         Init = function(self)
             self.Size.x = 5000
             DoNextFrame(function()
-                self.DieTime = CurTime()  + 0.6
+                self.DieTime = CurTime()  + 0.45
             end)
         end,
     },
@@ -100,7 +101,8 @@ BASE_PROJ.projectilesList = {
                 end)
             end
             self:Remove()
-        end
+        end,
+        SndOnHit = true
     },
 
 
@@ -111,7 +113,7 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 0,
         Color = Color(138,97,46),
         Size = 12,
-        DMGType = "Fire",
+        DMGType = "ExplosiveFire",
         OnContact = function(self, enemy)
             self.Phys.f:setCategory(6)
             enemy.Phys.f:setMask(6)
@@ -153,7 +155,8 @@ BASE_PROJ.projectilesList = {
                 end)
             end
             self:Remove()
-        end
+        end,
+        SndOnHit = true
     },
     
     ["Frizer"] = {
@@ -161,11 +164,17 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 350,
         Color = Color(0,138,176),
         Size = 12,
+        DMGType = "Ice",
         OnContact = function(self, enemy)
-            enemy:TakeDamage(self.Damage or 30, "Ice")
-            enemy.MaxFreezes = (enemy.MaxFreezes or 0) + 1
-            if enemy.MaxFreezes < 5 then
-                enemy:SetSpeed(enemy:GetSpeed()*0.85)
+            local desert = BASE_MODULE.Location == "Desert"
+            enemy:TakeDamage(self.Damage or 30, desert and "Water" or "Ice")
+            if not desert then
+                enemy.MaxFreezes = (enemy.MaxFreezes or 0) + 1
+                if enemy.MaxFreezes < 5 then
+                    enemy:SetSpeed(enemy:GetSpeed()*0.85)
+                end
+            else
+                enemy:GiveStatus("sap")
             end
             self:Remove()
         end
@@ -179,7 +188,21 @@ BASE_PROJ.projectilesList = {
             local burn = enemy:GiveStatus('burn')
             burn.Stacks = (burn.Stacks or 0) + 1
             self:Remove()
-        end
+        end,
+        Think = function(self)
+            if self.Phys.b:isDestroyed() or (self.NextP or 0) > RealTime() then return end
+            self.NextP = RealTime() + 0.02
+            local b = self.Phys.b
+            local lf = 0.4/BASE_MODULE["SpeedMul"]
+            local ctime = lf + RealTime()
+            local size = rand(3,6)
+            local g = PARCB:New(Color(199,102,18), lf, size, {x = b:getX(), y = b:getY()})
+            g.Think = function()
+                g.Size.x = size*((ctime-RealTime())/lf)*2
+                g.Position.y = g.Position.y + rand(-6, 6) 
+                g.Position.x = g.Position.x - rand(-10,10) 
+            end
+        end,
     },
     ["Gas"] = {
         Damage = 25,
@@ -205,6 +228,7 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 40,
         Color = Color(0,138,176),
         Size = 200,
+        DMGType = "Energy",
         OnContact = function(self, enemy)
             local olddmg = self.Damage
             self.Damage = math.max(-0.01,olddmg - math.abs(enemy:GetHealth()))
@@ -222,6 +246,7 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 640,
         Color = Color(0,138,176),
         Size = 20,
+        DMGType = "Normal",
         Init = function(self)
             self.Size.x = 70
         end,
@@ -229,13 +254,15 @@ BASE_PROJ.projectilesList = {
             self.Phys.b:setFixedRotation(false)
             self.DieTime = CurTime()  + 530
             self.Phys.b:applyTorque(666120)
-        end
+        end,
+        SndOnHit = true
     },
     ["RagingBullet"] = {
         Damage = 5,
         FlySpeed = 120,
         Color = Color(176,0,0),
         Size = 95,
+        DMGType = "Psy",
         OnContact = function(self, enemy)
             local olddmg = self.Damage
             self.Damage = math.max(-0.01,olddmg - math.abs(enemy:GetHealth()))
@@ -253,6 +280,7 @@ BASE_PROJ.projectilesList = {
         FlySpeed = 240,
         Color = Color(108,108,108),
         Size = 95,
+        DMGType = "Physics",
         OnContact = function(self, enemy)
             local olddmg = self.Damage
             if not enemy:GetTypeTable().Boss then
@@ -263,7 +291,8 @@ BASE_PROJ.projectilesList = {
         end,
         Init = function(self)
             self.Size.x = 20
-        end
+        end, 
+        SndOnHit = true
     },
     ["DoomBall"] = {
         Damage = 0,
@@ -304,6 +333,12 @@ end
 function PROJECTILE:OnContact(enemy)
     if enemy and enemy.TakeDamage then
         enemy:TakeDamage(self.Damage or 5, self:GetTypeTable() and self:GetTypeTable().DMGType or "Normal")
+        if self:GetTypeTable().SndOnHit then
+            local snd = PlaySound("damageDeal",math.random(1,#BASE_MODULE.Sounds["damageDeal"]))
+            if snd then
+                snd:setPitch(rand(1.2,1.4))
+            end
+        end
     end
     self:Remove()
 end
@@ -408,7 +443,7 @@ function BASE_PROJ:Think()
             size = v.Size
             color = Copy(v.Color)
             pos = v.Phys and {x = v.Phys.b:getX(), y = v.Phys.b:getY()} or v.Position
-            love.graphics.setColor(color.r/255,color.g/255,color.b/255)
+            love.graphics.setColor(color.r/255,color.g/255,color.b/255, (color.a or 255)/255)
             if v.img then
                 love.graphics.draw( v.img, pos['x'], pos['y'], 0, size.x, size.y)
             else
@@ -416,7 +451,7 @@ function BASE_PROJ:Think()
                 love.graphics.polygon("fill", v.Phys.b:getWorldPoints(
                            v.Phys.s:getPoints()))
             end
-            love.graphics.print((v.Damage or 5), pos['x'] - 24,pos['y'] - 44)
+            love.graphics.print((v.Damage or 5), pos['x'] - 24 - size.x,pos['y'] - 44)
             love.graphics.setColor(1, 1, 1, 1)
             if v.Think then
                 v:Think()

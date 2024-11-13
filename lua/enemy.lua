@@ -234,6 +234,7 @@ BASE_ENEMY.enemiesList = {
         AttackSpeed = 0.01,
         Color = Color(252,107,209),
         Size = 265,
+        Boss = true,
         ProcDMG = function(self, dmg)
             local x,y = self.Phys.b:getX(),self.Phys.b:getY() + math.random(-22,22)
             if self.NextThing < CurTime() then
@@ -333,6 +334,7 @@ BASE_ENEMY.enemiesList = {
         Color = Color(56,66,96),
         Size = 100,
         Cost = 500,
+        Boss = true,
         Desc = "Вор Ресурсов\nКрадет ресурсы при получении урона, проверка вашей экономики.\nБлагодаря своей форме может иногда проскальзывать сквозь оборону.",
         Init = function(self, x,y)
             self.Phys.b:destroy()
@@ -438,7 +440,7 @@ BASE_ENEMY.enemiesList = {
         Color = Color(221,203,99),
         Size = 66,
         Cost = 60,
-        Desc = "Пустынный-раздвоитель\nПри смерти создает 6 раздвоителей.\nБлагодаря своей форме может иногда проскальзывать сквозь оборону.",
+        Desc = "Пустынный-раздвоитель\nПри смерти создает 6 майор-двоителей.\nБлагодаря своей форме может иногда проскальзывать сквозь оборону.",
         Init = function(self, x,y)
             self.Phys.b:destroy()
             static = {}
@@ -453,8 +455,8 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         OnRemove = function(self,x,y)
-            for i=1,4 do
-                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Doublid", x-12*i,y):SetPos( x-12*i,y) end, 1)
+            for i=1,6 do
+                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Mayor_doublid", x-12*i,y):SetPos( x-12*i,y) end, 1)
             end
         end,
 
@@ -500,7 +502,8 @@ BASE_ENEMY.enemiesList = {
         Color = Color(105,2,2),
         Size = 250,
         Cost = 3335,
-        Desc = "Главнокомандующий Воин Пустыни\nПолучает сопротивлению к определенному типу урона при получении урона(максимум 85%).\nБлагодаря своей форме может иногда проскальзывать сквозь оборону.",
+        Boss = true,
+        Desc = "Генерал-майор Пустыни\nПолучает сопротивлению к определенному типу урона при получении урона(максимум 85%).\nБлагодаря своей форме может иногда проскальзывать сквозь оборону.",
         Init = function(self, x,y)
             self.Phys.b:destroy()
             static = {}
@@ -524,13 +527,477 @@ BASE_ENEMY.enemiesList = {
             self.DamagesResist[dmg.type] = math.min(0.95, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.01 or 0.01)
             return dmg
         end,
+        OnContact = function(self, proj)
+            if proj.IsTile then
+                proj.Health = proj.Health - 100
+                if proj.Health <= 0 then
+                    proj:Remove()
+                end
+            end
+        end,
+
+    },
+    ["Dune_warrior_boss2"] = {
+        HP = 750000,
+        MovementSpeed = 3,
+        AttackSpeed = 0.02,
+        Color = Color(52,1,1),
+        Size = 350,
+        Cost = 10000,
+        Boss = true,
+        Face = love.graphics.newImage('images/enemy/ful_face.png'),
+        Desc = "Главнокомандующий Воин Пустыни\nПолучает сопротивлению к определенному типу урона при получении урона(максимум 99%).\nБлагодаря своей форме может иногда проскальзывать сквозь оборону.\nФинальный босс пустыни.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(true)
+            static.b:setMass(20000)
+            static.s = love.physics.newPolygonShape( 350, -225, 350, 225, -350, 0 )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+        end,
+        ProcDMG = function(self, dmg)
+            if not  self.DamagesResist then
+                self.DamagesResist = {}
+            end
+            if self.DamagesResist[dmg.type] then
+                dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
+            end
+            self.DamagesResist[dmg.type] = math.min(0.99, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.01 or 0.01)
+            return dmg
+        end,
+        OnContact = function(self, proj)
+            if proj.IsTile then
+                proj.Health = proj.Health - 600
+                if proj.Health <= 0 then
+                    proj:Remove()
+                end
+            end
+        end,
+
+    },
+    --Graveyard
+    ["General"] = {
+        HP = 225,
+        MovementSpeed = 72,
+        AttackSpeed = 0.6,
+        Color = Color(83,84,79),
+        Size = 44,
+        Cost = 3,
+        Desc = "Генерал\nОдин из слабейших врагов на кладбище, почти не угрожает обороне, но их очeнь много.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,7) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-55,55)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+        end
+    },
+
+    ["General_mayor"] = {
+        HP = 500,
+        MovementSpeed = 52,
+        AttackSpeed = 0.6,
+        Color = Color(202,198,203),
+        Size = 44,
+        Cost = 9,
+        Desc = "Генерал-майор\nПосле смерти создает генерала на своем месте.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,7) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-55,55)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+        end,
+        OnRemove = function(self,x,y)
+            DoNextFrame(function() BASE_ENEMY:BaseEnemy("General", x,y):SetPos( x,y) end)
+        end,
+
+    },
+
+    ["General_l"] = {
+        HP = 900,
+        MovementSpeed = 52,
+        AttackSpeed = 0.6,
+        Color = Color(0,0,0),
+        Size = 44,
+        Cost = 29,
+        Desc = "Генерал-лейтенант\nПосле смерти создает генерал-майора на своем месте.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(3900)
+            local bruh = {}
+            for i=1,rand(3,7) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-99,99)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+        end,
+        OnRemove = function(self,x,y)
+            DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_mayor", x,y):SetPos( x,y) end)
+        end,
+
+    },
+    ["General_bomb"] = {
+        HP = 3000,
+        MovementSpeed = 22,
+        AttackSpeed = 0.1,
+        Color = Color(59,19,19),
+        Size = 44,
+        Cost = 125,
+        Desc = "Генерал-бомба\nПосле смерти создает 6 генерал-лейтенантов на своем месте.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(3900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-150,200)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+        end,
+        OnRemove = function(self,x,y)
+            for i=1,6 do
+                DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_l", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+            end
+        end,
+
+    },
+    ["Gravedigger"] = {
+        HP = 2000,
+        MovementSpeed = 45,
+        AttackSpeed = 0.1,
+        Color = Color(47,71,179),
+        Size = 55,
+        Cost = 190,
+        Desc = "Могильщик\nКаждые 15 секунд выкапывает пару врагов.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(0,50)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 10
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 15
+                    local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                    for i=1,rand(1,5) do
+                        DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_mayor", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                    end
+                end
+            end
+        end,
+    },
+    ["Rando"] = {
+        HP = 5000,
+        MovementSpeed = 45,
+        AttackSpeed = 0.1,
+        Color = Color(193,115,219,111),
+        Size = 100,
+        Cost = 250,
+        Desc = "Путник\nРаз в 12 секунд меняет всем врагам начальную позицию.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-100,100)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 10
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 12
+                    for k,v in pairs(ENEMIES) do
+                        v.OrigY = rand(350,1000)
+                    end
+                end
+            end
+        end,
+    },
+    ["Hypnodance"] = {
+        HP = 25000,
+        MovementSpeed = 12,
+        AttackSpeed = 0.1,
+        Color = Color(81,11,105,82),
+        Size = 100,
+        Cost = 200,
+        Desc = "Музыкальный безумец\nОчень медленный и жирный.\nПостоянно меняет всем врагам начальную позицию.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-100,100)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 2
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 0.9
+                    for k,v in pairs(ENEMIES) do
+                        v.OrigY = rand(350,1000)
+                    end
+                end
+            end
+        end,
+    },
+    ["Healer"] = {
+        HP = 12000,
+        MovementSpeed = 50,
+        AttackSpeed = 0.1,
+        Color = Color(80,174,40,193),
+        Size = 155,
+        Cost = 120,
+        Desc = "Лекарь\nОчень жирный.\nПостоянно лечит здоровье всем врагам на поле.\nПо 1.5% макс здоровья в 4 секунды.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(4,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-155,155)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 2
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 4
+                    for k,v in pairs(ENEMIES) do
+                        if v then
+                            v:SetHealth(math.min(v:GetMaxHealth(), v:GetHealth() + v:GetMaxHealth()*0.015))
+                        end
+                    end
+                end
+            end
+        end,
+    },
+    ["Healer_mayor"] = {
+        HP = 100000,
+        MovementSpeed = 10,
+        AttackSpeed = 0.1,
+        Color = Color(29,79,7,193),
+        Size = 200,
+        Cost = 10000,
+        Desc = "Главарь лекарей Досеитовой магии\nОчень жирный.\nПостоянно лечит здоровье всем врагам на поле.\nПо 25% макс здоровья в 1 секунду.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(false)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-300,300)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 2
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 1
+                    for k,v in pairs(ENEMIES) do
+                        if v then
+                            v:SetHealth(math.min(v:GetMaxHealth(), v:GetHealth() + v:GetMaxHealth()*0.25))
+                        end
+                    end
+                end
+            end
+        end,
+    },
+    ["Gravedigger_boss"] = {
+        HP = 25000,
+        MovementSpeed = 55,
+        AttackSpeed = 0.1,
+        Boss = true,
+        Color = Color(48,13,53),
+        Size = 250,
+        Cost = 5000,
+        Desc = "Могильный оживитель\nКаждые 7 секунд выкапывает множество сильных врагов.\nИмеет случайную форму.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(true)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-250,250)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 10
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 7
+                    local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                    for i=1,rand(3,8) do
+                        DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_bomb", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                    end
+                end
+            end
+        end,
+
+
+    },
+    ["Necro_boss"] = {
+        HP = 250000,
+        MovementSpeed = 12,
+        AttackSpeed = 0.1,
+        Boss = true,
+        Color = Color(40,40,40),
+        Size = 500,
+        Cost = 50000,
+        Desc = "Босс подмогильных фракций - Негромант\nКаждые 11 секунд выкапывает босса.\nИмеет случайную форму.\nФинальный босс кладбища.",
+        Init = function(self, x,y)
+            self.Phys.b:destroy()
+            static = {}
+            static.b = love.physics.newBody(BASE_MODULE.world, x,y, "dynamic")
+            static.b:setFixedRotation(true)
+            static.b:setMass(900)
+            local bruh = {}
+            for i=1,rand(3,5) do
+                for i2=1,2 do
+                    bruh[#bruh + 1] = rand(-500,500)
+                end
+            end
+            static.s = love.physics.newPolygonShape( bruh )    
+            static.f = love.physics.newFixture(static.b, static.s)
+            static.f:setGroupIndex(-32)
+            static.f:setUserData(tostring(self.ID).."G")
+            static.f:setRestitution(1) 
+            self.Phys = static
+            
+            self.NextDig = CurTime() + 10
+            self.Think = function()
+                self:Walk()
+                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                    self.NextDig = CurTime() + 11
+                    local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                    local rands = rand(1,6)
+                    DoNextFrame(function() BASE_ENEMY:BaseEnemy(rands == 1 and "Gravedigger_boss" or rands == 2 and "Dune_warrior_boss2" or rands == 3 and "Dune_warrior_boss" or rands == 4 and "Boss_Mother" or rands == 5 and "Boss_Destroyer" or "Sundowner_Boss" , x,y):SetPos( x,y) end)
+                end
+            end
+        end,
+
 
     },
     
 }
 function ENEMY:Think()
     self:Walk()
-    --self:TakeDamage(0.07)
 end
 ENEMY.IsEnemy = true
 
@@ -576,6 +1043,25 @@ BASE_MODULE["status_doomed"] = {
         return col
     end,
     Debuff = true
+}
+BASE_MODULE["status_sap"] = {
+    Think = function(self, owner)
+    end,
+    PreDraw = function(self, owner, col)
+        col = Color(col.r - 5 * math.sin(RealTime()*4),col.g - 5 * math.abs(math.sin(RealTime()*4)),col.b + 80 * math.abs(math.sin(RealTime()*4)))
+        return col
+    end,
+    ProcDMG = function(self, owner, dmg)
+        if dmg.type == "Fire" then
+            dmg.Damage = dmg.Damage/1.5
+        elseif dmg.type == "Energy" then
+            dmg.Damage = dmg.Damage*4
+        elseif dmg.type == "Water" then
+            dmg.Damage = dmg.Damage*2
+        end
+        return dmg
+    end,
+    Debuff = true
 
 }
 
@@ -611,7 +1097,7 @@ function ENEMY:ProcessDMG(dmginfo)
     if statuses then
         for k,v in pairs(statuses) do
             if v.ProcDMG then
-                v.ProcDMG(v, self, dmginfo)
+                dmginfo = v.ProcDMG(v, self, dmginfo)
             end
         end
     end
@@ -750,7 +1236,7 @@ function BASE_ENEMY:Think()
                     end
                 end
             end
-            love.graphics.setColor(color.r/255,color.g/255,color.b/255)
+            love.graphics.setColor(color.r/255,color.g/255,color.b/255, (color.a or 255)/255)
             if v.img then
                 love.graphics.draw( v.img, pos['x'], pos['y'], 0, size.x, size.y)
             else
