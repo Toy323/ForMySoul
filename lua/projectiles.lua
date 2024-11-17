@@ -197,10 +197,12 @@ BASE_PROJ.projectilesList = {
             local ctime = lf + RealTime()
             local size = rand(3,6)
             local g = PARCB:New(Color(199,102,18), lf, size, {x = b:getX(), y = b:getY()})
-            g.Think = function()
-                g.Size.x = size*((ctime-RealTime())/lf)*2
-                g.Position.y = g.Position.y + rand(-6, 6) 
-                g.Position.x = g.Position.x - rand(-10,10) 
+            if g then
+                g.Think = function()
+                    g.Size.x = size*((ctime-RealTime())/lf)*2
+                    g.Position.y = g.Position.y + rand(-6, 6) 
+                    g.Position.x = g.Position.x - rand(-10,10) 
+                end
             end
         end,
     },
@@ -303,6 +305,12 @@ BASE_PROJ.projectilesList = {
             self.Phys.f:setCategory(5)
             enemy.Phys.f:setMask(5)
             local burn = enemy:GiveStatus('doomed')
+        end,
+        predraw = function()
+            love.graphics.setShader(myShader)
+        end,
+        Think = function()
+            love.graphics.setShader()
         end
     },
 }
@@ -411,6 +419,7 @@ function PROJECTILE:Initialize(x,y)
     if abs.InitB then
         abs.InitB(self)
     end
+    self.predraw = abs.predraw
 end
 function PROJECTILE:Walk(speed)
     if self.Phys and self.Phys.b and not self.Removed and not self.Phys.b:isDestroyed() then
@@ -444,6 +453,9 @@ function BASE_PROJ:Think()
             color = Copy(v.Color)
             pos = v.Phys and {x = v.Phys.b:getX(), y = v.Phys.b:getY()} or v.Position
             love.graphics.setColor(color.r/255,color.g/255,color.b/255, (color.a or 255)/255)
+            if v.predraw then
+                v:predraw(pos)
+            end
             if v.img then
                 love.graphics.draw( v.img, pos['x'], pos['y'], 0, size.x, size.y)
             else
