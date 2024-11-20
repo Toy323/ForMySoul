@@ -224,6 +224,9 @@ function tiles:Think()
                 love.graphics.print(v.Health,v.Position['x'] - size,v.Position['y'] - size/1.5)
                 love.graphics.print(math.ceil((v.NextShoot-CurTime())*100)/100, v.Position['x'] - size,v.Position['y'] - size/2)
             end
+            if v.Animation then
+                v:Animation(v.Phys.b:getX(), v.Phys.b:getY())
+            end
             if finded then
                 local i = WEAPONS.IDFusion[v.WeaponOnMe.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.WeaponOnMe] or WEAPONS.IDFusion[v.IDOfWeapon.."plus"..SELECTED_TOOL.WeaponOnMe] or WEAPONS.IDFusion[SELECTED_TOOL.WeaponOnMe.."plus"..v.IDOfWeapon]
                 if WEAPONS.FusionsDesc[i] then

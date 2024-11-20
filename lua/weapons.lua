@@ -1,8 +1,21 @@
 WEAPONS = {}
-
-
+WEPANIMS = {}
+function WEAPONS:LoadAnimations(name)
+    WEPANIMS["tripla"] = {}
+    for i=1,5 do
+        WEPANIMS["tripla"]["attack_"..i] = love.graphics.newImage('images/animations/'..name..'/shoot_a'..i..'.png')
+    end
+    for i=1,3 do
+        WEPANIMS["tripla"]["idle_"..i] = love.graphics.newImage('images/animations/'..name..'/idle_'..i..'.png')
+    end
+    WEPANIMS["tripla"]["dmg_l"] =  love.graphics.newImage('images/animations/'..name..'/dmg_take.png')
+end
+function AnimG(type)
+    return WEPANIMS[type]
+end
+WEAPONS:LoadAnimations("tripla")
 WEAPONS.FuncByID = {
-    function(self)
+    {Think = function(self)
         if self.NextShoot < CurTime() then
             self.NextShoot = CurTime() + 1.9
             for i=1,3 do
@@ -11,9 +24,17 @@ WEAPONS.FuncByID = {
                 proj.YSpeed = i == 1 and -60 or i == 2 and 60 or 0
                 proj:SetPos(x,y)
             end
-            
+            self.Attack = CurTime() + 0.5
         end
-    end,
+    end, 
+    Animation = function(self, x,y)
+        x,y = x-32,y-32
+        if self.Attack and self.Attack > CurTime() then 
+            love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
+        else
+            love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2)%2)+1)], x, y, 0, 1, 1)
+        end
+    end},
 
     function(self)
         if self.NextShoot < CurTime() -((self.NoShoot or 0)%3 == 0 and 3 or 0) then
@@ -581,7 +602,7 @@ wepadd("dicer",
 )
 
 BASE_MODULE["money_cd"] = 0
-WEAPONS.BaseCD["money"] = 15
+WEAPONS.BaseCD["money"] = 6
 BASE_MODULE["shield_dmg_cd"] = 0
 WEAPONS.BaseCD["shield_dmg"] = 20
 
@@ -743,3 +764,21 @@ wepadd("laser",
 )
 
 
+wepadd("silencer", 
+"Наводчик тишины\nСтреляет по случайному врагу на линии снарядом наносящий 400 урона,который отключает специальную способность на 7 секунд.\nМожет отключать способность и боссу.\nРаботает лишь на способности которые завязаны на времени",
+    function(self)
+        if self.NextShoot < CurTime() then
+            self.NextShoot = CurTime() + 4
+            local x,y = self.Position["x"],self.Position['y']  - math.random(-64,64)
+            local gr = self:FindTarget(125, nil, 125)
+            if gr then
+                y = gr.Phys.b:getY() - gr.Size["y"]/2
+            end
+            local proj = BASE_PROJ:BasePROJ("Silenced",x,y)
+            proj:SetPos(x,y)
+            proj.Damage = 400
+            --NextDig
+        end
+    end,
+    1300, love.graphics.newImage('images/wepsome/silencer.png'), Color(125,125,125)
+)

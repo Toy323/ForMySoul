@@ -65,7 +65,11 @@ require('lua/particles')
 require('lua/sounds')
 require('lua/shaders')
 require('lua/menu')
+require('lua/save_base')
 require('lua/simple-slider')
+
+--MODULE
+lume = require('lua/module/lume')
 
 local smgpause = love.graphics.newImage('images/pause.png')
 local resume = love.graphics.newImage('images/start.png')
@@ -469,6 +473,9 @@ function love.load(arg)
     for k,v in pairs(arg) do
         print(k,v)
     end
+
+    dataLoad()
+
     time2 = 0
     LoadS()
       
@@ -476,6 +483,7 @@ function love.load(arg)
     love.window.setTitle("Doset Vs Dosei v"..BASE_MODULE.Version)
     loadMenu()
 
+    saveGame()
 end
 BASE_MODULE.OnPause = false
 
@@ -507,7 +515,7 @@ function love.keypressed(button, code, isrepeat)
         elseif button == "escape" then
             --love.window.close()
         end
-        SUBMODULE_INPUT.CreatePhantomText(BASE_MODULE["LastTextInput"] or 1)
+        --SUBMODULE_INPUT.CreatePhantomText(BASE_MODULE["LastTextInput"] or 1)
         if button == "-" then
             BASE_MODULE.ButtonOnMinus.OnClickDo(-323,-323)
         end
@@ -517,7 +525,7 @@ function love.keypressed(button, code, isrepeat)
     end
 end
 function love.mousepressed( x, y, button, istouch, presses )
-    SUBMODULE_INPUT.CreatePhantomText(BASE_MODULE["LastTextInput"] or 1,x,y)
+    --SUBMODULE_INPUT.CreatePhantomText(BASE_MODULE["LastTextInput"] or 1,x,y)
     local scale = Scale()
    -- print(x,y)
    local x2,y2 = 0,0
@@ -578,18 +586,18 @@ function SUBMODULE_DRAW.Think()
     local x,y = mouse.getPosition()
     local scale = Scale()
 --    love.graphics.circle("fill",(x or 32),(y or 32),41*math.abs(math.cos(time/math.pi*0.5)))
-    if (SUBMODULE_INPUT.NextUse or 0) < time and lastinput and love.keyboard.isDown(lastinput) then
+   --[[ if (SUBMODULE_INPUT.NextUse or 0) < time and lastinput and love.keyboard.isDown(lastinput) then
         SUBMODULE_INPUT.CreatePhantomText(lastinput or 1)
         SUBMODULE_INPUT.NextUse = time + 0.3
     end
     if love.mouse.isDown(1) then
         SUBMODULE_INPUT.CreatePhantomText(lastinput or 1,x,y)
-    end
+    end]]
     if BASE_MODULE.ActiveMode then
         WAVE:Start()
     end
     tiles:Think()
-    SUBMODULE_INPUT.ThinkPhantoms()
+    --SUBMODULE_INPUT.ThinkPhantoms()
     BASE_ENEMY:Think()
     BASE_PROJ:Think()
     BUTTON.ThinkButtons()

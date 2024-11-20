@@ -294,9 +294,11 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            local ac = tilesblock[rand(1,#tilesblock)] 
-            if ac and ac.NextShoot then
-                ac.NextShoot = ac.NextShoot + rand(0.2,6)
+            if not self:GetStatus('silence') then
+                local ac = tilesblock[rand(1,#tilesblock)] 
+                if ac and ac.NextShoot then
+                    ac.NextShoot = ac.NextShoot + rand(0.2,6)
+                end
             end
             return dmg
         end,
@@ -323,7 +325,9 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - 1
+            if not self:GetStatus('silence') then
+                BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - 1
+            end
             return dmg
         end,
     },
@@ -350,7 +354,9 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - 10
+            if not self:GetStatus('silence') then 
+                BASE_MODULE["MoneyNow"] = BASE_MODULE["MoneyNow"] - 10
+            end
             return dmg
         end,
     },
@@ -399,7 +405,9 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            self.OrigY = rand(160,1150)
+            if not self:GetStatus('silence') then
+                self.OrigY = rand(160,1150)
+            end
             return dmg
         end,
     },
@@ -426,8 +434,10 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         OnRemove = function(self,x,y)
-            for i=1,4 do
-                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Mayor", x-12*i,y):SetPos( x-12*i,y) end, 1)
+            if not self:GetStatus('silence') then
+                for i=1,4 do
+                    DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Mayor", x-12*i,y):SetPos( x-12*i,y) end, 1)
+                end
             end
         end,
 
@@ -455,8 +465,10 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         OnRemove = function(self,x,y)
-            for i=1,6 do
-                DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Mayor_doublid", x-12*i,y):SetPos( x-12*i,y) end, 1)
+            if not self:GetStatus('silence') then
+                for i=1,6 do
+                    DoNextFramePlus(function() BASE_ENEMY:BaseEnemy("Mayor_doublid", x-12*i,y):SetPos( x-12*i,y) end, 1)
+                end
             end
         end,
 
@@ -484,13 +496,15 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            if not  self.DamagesResist then
-                self.DamagesResist = {}
+            if not self:GetStatus('silence') then
+                if not  self.DamagesResist then
+                    self.DamagesResist = {}
+                end
+                if self.DamagesResist[dmg.type] then
+                    dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
+                end
+                self.DamagesResist[dmg.type] = math.min(0.75, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.02 or 0.02)
             end
-            if self.DamagesResist[dmg.type] then
-                dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
-            end
-            self.DamagesResist[dmg.type] = math.min(0.75, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.02 or 0.02)
             return dmg
         end,
 
@@ -518,13 +532,15 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            if not  self.DamagesResist then
-                self.DamagesResist = {}
+            if not self:GetStatus('silence') then
+                if not  self.DamagesResist then
+                    self.DamagesResist = {}
+                end
+                if self.DamagesResist[dmg.type] then
+                    dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
+                end
+                self.DamagesResist[dmg.type] = math.min(0.95, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.01 or 0.01)
             end
-            if self.DamagesResist[dmg.type] then
-                dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
-            end
-            self.DamagesResist[dmg.type] = math.min(0.95, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.01 or 0.01)
             return dmg
         end,
         OnContact = function(self, proj)
@@ -561,13 +577,15 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         ProcDMG = function(self, dmg)
-            if not  self.DamagesResist then
-                self.DamagesResist = {}
+            if not self:GetStatus('silence') then
+                if not  self.DamagesResist then
+                    self.DamagesResist = {}
+                end
+                if self.DamagesResist[dmg.type] then
+                    dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
+                end
+                self.DamagesResist[dmg.type] = math.min(0.99, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.01 or 0.01)
             end
-            if self.DamagesResist[dmg.type] then
-                dmg.Damage = dmg.Damage * (1-self.DamagesResist[dmg.type])
-            end
-            self.DamagesResist[dmg.type] = math.min(0.99, self.DamagesResist[dmg.type] and self.DamagesResist[dmg.type] + 0.01 or 0.01)
             return dmg
         end,
         OnContact = function(self, proj)
@@ -638,7 +656,9 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         OnRemove = function(self,x,y)
-            DoNextFrame(function() BASE_ENEMY:BaseEnemy("General", x,y):SetPos( x,y) end)
+            if not self:GetStatus('silence') then
+                DoNextFrame(function() BASE_ENEMY:BaseEnemy("General", x,y):SetPos( x,y) end)
+            end
         end,
 
     },
@@ -671,7 +691,9 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         OnRemove = function(self,x,y)
-            DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_mayor", x,y):SetPos( x,y) end)
+            if not self:GetStatus('silence') then 
+                DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_mayor", x,y):SetPos( x,y) end)
+            end
         end,
 
     },
@@ -703,8 +725,10 @@ BASE_ENEMY.enemiesList = {
             self.Phys = static
         end,
         OnRemove = function(self,x,y)
-            for i=1,6 do
-                DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_l", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+            if not self:GetStatus('silence') then
+                for i=1,6 do
+                    DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_l", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                end
             end
         end,
 
@@ -739,11 +763,13 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 10
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 15
-                    local x,y = self.Phys.b:getX(), self.Phys.b:getY()
-                    for i=1,rand(1,5) do
-                        DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_mayor", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                if not self:GetStatus('silence') then
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 15
+                        local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                        for i=1,rand(1,5) do
+                            DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_mayor", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                        end
                     end
                 end
             end
@@ -779,10 +805,12 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 10
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 12
-                    for k,v in pairs(ENEMIES) do
-                        v.OrigY = rand(350,1000)
+                if not self:GetStatus('silence') then
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 12
+                        for k,v in pairs(ENEMIES) do
+                            v.OrigY = rand(350,1000)
+                        end
                     end
                 end
             end
@@ -818,10 +846,12 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 2
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 0.9
-                    for k,v in pairs(ENEMIES) do
-                        v.OrigY = rand(350,1000)
+                if not self:GetStatus('silence') then 
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 0.9
+                        for k,v in pairs(ENEMIES) do
+                            v.OrigY = rand(350,1000)
+                        end
                     end
                 end
             end
@@ -857,11 +887,13 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 2
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 4
-                    for k,v in pairs(ENEMIES) do
-                        if v then
-                            v:SetHealth(math.min(v:GetMaxHealth(), v:GetHealth() + v:GetMaxHealth()*0.015))
+                if not self:GetStatus('silence') then 
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 4
+                        for k,v in pairs(ENEMIES) do
+                            if v then
+                                v:SetHealth(math.min(v:GetMaxHealth(), v:GetHealth() + v:GetMaxHealth()*0.015))
+                            end
                         end
                     end
                 end
@@ -898,11 +930,13 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 2
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 1
-                    for k,v in pairs(ENEMIES) do
-                        if v then
-                            v:SetHealth(math.min(v:GetMaxHealth(), v:GetHealth() + v:GetMaxHealth()*0.25))
+                if not self:GetStatus('silence') then 
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 1
+                        for k,v in pairs(ENEMIES) do
+                            if v then
+                                v:SetHealth(math.min(v:GetMaxHealth(), v:GetHealth() + v:GetMaxHealth()*0.25))
+                            end
                         end
                     end
                 end
@@ -940,11 +974,13 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 10
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 7
-                    local x,y = self.Phys.b:getX(), self.Phys.b:getY()
-                    for i=1,rand(3,8) do
-                        DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_bomb", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                if not self:GetStatus('silence') then
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 7
+                        local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                        for i=1,rand(3,8) do
+                            DoNextFrame(function() BASE_ENEMY:BaseEnemy("General_bomb", x + i*32,y-i*2):SetPos( x + i*32,y-i*2) end)
+                        end
                     end
                 end
             end
@@ -983,11 +1019,13 @@ BASE_ENEMY.enemiesList = {
             self.NextDig = CurTime() + 10
             self.Think = function()
                 self:Walk()
-                if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
-                    self.NextDig = CurTime() + 11
-                    local x,y = self.Phys.b:getX(), self.Phys.b:getY()
-                    local rands = rand(1,6)
-                    DoNextFrame(function() BASE_ENEMY:BaseEnemy(rands == 1 and "Gravedigger_boss" or rands == 2 and "Dune_warrior_boss2" or rands == 3 and "Dune_warrior_boss" or rands == 4 and "Boss_Mother" or rands == 5 and "Boss_Destroyer" or "Sundowner_Boss" , x,y):SetPos( x,y) end)
+                if not self:GetStatus('silence') then
+                    if self.NextDig < CurTime() and not self.Phys.b:isDestroyed() then
+                        self.NextDig = CurTime() + 11
+                        local x,y = self.Phys.b:getX(), self.Phys.b:getY()
+                        local rands = rand(1,6)
+                        DoNextFrame(function() BASE_ENEMY:BaseEnemy(rands == 1 and "Gravedigger_boss" or rands == 2 and "Dune_warrior_boss2" or rands == 3 and "Dune_warrior_boss" or rands == 4 and "Boss_Mother" or rands == 5 and "Boss_Destroyer" or "Sundowner_Boss" , x,y):SetPos( x,y) end)
+                    end
                 end
             end
         end,
@@ -1060,6 +1098,17 @@ BASE_MODULE["status_sap"] = {
             dmg.Damage = dmg.Damage*2
         end
         return dmg
+    end,
+    Debuff = true
+
+}
+
+BASE_MODULE["status_silence"] = {
+    Think = function(self, owner)
+    end,
+    PreDraw = function(self, owner, col)
+        col = Color(col.r * math.abs(math.sin(RealTime()*4)),col.g  * math.abs(math.sin(RealTime()*4)),col.b * math.abs(math.sin(RealTime()*4)))
+        return col
     end,
     Debuff = true
 

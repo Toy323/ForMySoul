@@ -11,6 +11,47 @@ BASE_PROJ.projectilesList = {
         Size = 12,
         SndOnHit = true
     },
+    ["Silenced"] = {
+        Damage = 12,
+        FlySpeed = 700,
+        Color = Color(67,67,67),
+        Size = 25,
+        SndOnHit = true,
+        OnContact = function(self, enemy)
+            if enemy and enemy.TakeDamage then
+                enemy:TakeDamage(self.Damage or 5, "Normal")
+                if self:GetTypeTable().SndOnHit then
+                    local snd = PlaySound("damageSilencer",math.random(1,#BASE_MODULE.Sounds["damageSilencer"]))
+                    if snd then
+                        snd:setPitch(rand(1.2,1.4))
+                    end
+                end
+                enemy.NextDig = (enemy.NextDig or CurTime()) + 7
+            end
+            self:Remove()
+        end
+    },
+    ["S_Silencer"] = {
+        Damage = 12,
+        FlySpeed = 700,
+        Color = Color(42,42,42),
+        Size = 44,
+        SndOnHit = true,
+        OnContact = function(self, enemy)
+            if enemy and enemy.TakeDamage then
+                enemy:TakeDamage(self.Damage or 5, "Normal")
+                if self:GetTypeTable().SndOnHit then
+                    local snd = PlaySound("damageSilencer",math.random(1,#BASE_MODULE.Sounds["damageSilencer"]))
+                    if snd then
+                        snd:setPitch(rand(1.2,1.4))
+                    end
+                end
+                enemy.NextDig = (enemy.NextDig or CurTime()) + 1
+                enemy:GiveStatus('silence')
+            end
+            self:Remove()
+        end
+    },
     ["LBall"] = {
         Damage = 50,
         FlySpeed = 70,

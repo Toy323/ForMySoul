@@ -312,3 +312,21 @@ function(self)
 end,
 "Усиливающийся щит\nЩит во время полета очень сильно усиляется.\nЩит может усилится вплоть до 8000 урона!", Color(88,175,163)
 )
+
+fuse(WEAPONS, "silencer", "chains", 
+function(self)
+    if self.NextShoot < CurTime() then
+        self.NextShoot = CurTime() + 4
+        local x,y = self.Position["x"],self.Position['y']  - math.random(-64,64)
+        local gr = self:FindTarget(125, nil, 125)
+        if gr then
+            y = gr.Phys.b:getY() - gr.Size["y"]/2
+        end
+        local proj = BASE_PROJ:BasePROJ("S_Silencer",x,y)
+        proj:SetPos(x,y)
+        proj.Damage = 400
+        --NextDig
+    end
+end,
+"Вечная тишь\nВыдается дебафф отключающий почти все способности врага.\nEсли враг сразу умер от удара, то дебафф тишины не будет работать.\nНе работает на врагах с первой локации.", Color(64,64,64)
+)
