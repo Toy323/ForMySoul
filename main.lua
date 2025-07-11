@@ -87,7 +87,7 @@ local function runFile(name)
 
 	return true, value -- success!
 end
-local bim = love.graphics.newImage('ritual.png')
+local bim = love.graphics.newImage('images/ritual.png')
 SELECTED_TOOL = 0
 function beginContact(a, b, coll)
 --	if a:getGroupIndex() ~= b:getGroupIndex() then

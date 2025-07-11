@@ -53,7 +53,7 @@ end,
 "Артилерия\nДа будет дождь из взрывных пуль!\nОбе характеристики двух орудий, пули при этом становятся взрывными.\nЗадержка выстрела дольше, прямой урон от попадания меньше.", Color(86,14,14)
 )
 fuse(WEAPONS, "sinusoid", "tripla", 
-function(self)
+{Think = function(self)
     if self.NextShoot < CurTime() then
         self.NextShoot = CurTime() + 3
         for i=1,3 do
@@ -72,10 +72,18 @@ function(self)
         
     end
 end,
+Animation = function(self, x,y)
+    x,y = x-32,y-32
+    if self.Attack and self.Attack > CurTime() then 
+        love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
+    else
+        love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2 + self.ID)%2)+1)], x, y, 0, 1, 1)
+    end
+end},
 "Тройная волна\nСтреляет сразу тремя пулями, у которых волнообразная траектория.\nУвеличиваемый урон в полете усиливается в 2 раза.\nСкорострельность уменьшена, урон становится чуть выше", Color(205,98,235)
 )
 fuse(WEAPONS, "momental", "tripla", 
-function(self)
+{Think = function(self)
     if self.NextShoot < CurTime() then
         self.NextShoot = CurTime() + 1.9
         for i=1,3 do
@@ -89,6 +97,15 @@ function(self)
         
     end
 end,
+Animation = function(self, x,y)
+    x,y = x-32,y-32
+    if self.Attack and self.Attack > CurTime() then 
+        love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
+    else
+        love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2 + self.ID)%2)+1)], x, y, 0, 1, 1)
+    end
+end},
+
 "Проклятые пули\nПули наносят намного больше урона.", Color(50,50,50)
 )
 
@@ -117,7 +134,7 @@ end,
 
 
 fuse_g(WEAPONS, 4, "tripla", 
-function(self)
+{Think = function(self)
     if self.NextShoot < CurTime() then
         self.NextShoot = CurTime() + 3
         for i=1,3 do
@@ -133,13 +150,20 @@ function(self)
                 proj:Walk()
             end
         end
-        
     end
-end,
+end,   
+Animation = function(self, x,y)
+    x,y = x-32,y-32
+    if self.Attack and self.Attack > CurTime() then 
+        love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
+    else
+        love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2 + self.ID)%2)+1)], x, y, 0, 1, 1)
+    end
+end},
 "Тройная догоняющая смерть\nВ разы больше урона, объеденяет 3 орудия сразу.", Color(57,57,57)
 )
 fuse_g(WEAPONS, 3, "sinusoid", 
-function(self)
+{Think = function(self)
     if self.NextShoot < CurTime() then
         self.NextShoot = CurTime() + 3
         for i=1,3 do
@@ -156,11 +180,19 @@ function(self)
             end
         end
     end
-end,
+end,   
+Animation = function(self, x,y)
+    x,y = x-32,y-32
+    if self.Attack and self.Attack > CurTime() then 
+        love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
+    else
+        love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2 + self.ID)%2)+1)], x, y, 0, 1, 1)
+    end
+end},
 "Тройная догоняющая смерть\nВ разы больше урона, объеденяет 3 орудия сразу.", Color(57,57,57)
 )
 fuse_g(WEAPONS, 2, "momental", 
-function(self)
+{Think = function(self)
     if self.NextShoot < CurTime() then
         self.NextShoot = CurTime() + 3
         for i=1,3 do
@@ -177,7 +209,15 @@ function(self)
             end
         end
     end
-end,
+end,   
+Animation = function(self, x,y)
+    x,y = x-32,y-32
+    if self.Attack and self.Attack > CurTime() then 
+        love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
+    else
+        love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2 + self.ID)%2)+1)], x, y, 0, 1, 1)
+    end
+end},
 "Тройная догоняющая смерть\nВ разы больше урона, объеденяет 3 орудия сразу.", Color(57,57,57)
 )
 

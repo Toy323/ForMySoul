@@ -32,7 +32,7 @@ WEAPONS.FuncByID = {
         if self.Attack and self.Attack > CurTime() then 
             love.graphics.draw( AnimG("tripla")["attack_"..(math.Round((self.Attack-CurTime())%4)+1)], x, y, 0, 1, 1)
         else
-            love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2)%2)+1)], x, y, 0, 1, 1)
+            love.graphics.draw( AnimG("tripla")["idle_"..(math.Round((CurTime()/2 + self.ID)%2)+1)], x, y, 0, 1, 1)
         end
     end},
 
